@@ -72,6 +72,53 @@ def data_parallel_forward(data, comm, model):
     recvbuf = recvbuf.reshape(-1)
     return recvbuf
 
+# assume that before calling the function, each process has already had a piece of data
+def ring_all_reduce(all_data, comm, op):
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    # data buffer for receiving data
+    recv = np.zeros(all_data.shape[1:], dtype=np.float16)
+    collection = all_data.copy()
+    
+
+    # start aggregation stage
+    for i in range(size - 1):
+        send_to = (rank + 1) % size
+        recv_from = (rank - 1) % size
+
+        # send data to the next process non-blocking
+        req = comm.Isend(collection[(rank - i) % size], dest=send_to, tag=i)
+        # receive data from the previous process blocking
+        # allocate a buffer to hold the received data
+        comm.Recv(recv, source=recv_from, tag=i)
+        # add the received data to the corresponding position to the local data
+        collection[(rank - i - 1) % size] = op(collection[(rank - i - 1) % size], recv)
+        
+
+    # start boardcast stage: each worker send one slice of aggregated parameters to the next worker; repeat N times
+    recv = np.collection[(rank - 1) % size].copy()
+    for i in range(size - 1):
+        send_to = (rank + 1) % size
+        recv_from = (rank - 1) % size
+
+        # send data to the next process non-blocking
+        req = comm.Isend(recv, dest=send_to, tag=i)
+        # receive data from the previous process blocking
+        # allocate a buffer to hold the received data
+        comm.Recv(recv, source=recv_from, tag=i)
+        pos = (rank - i - 1) % size
+        # warning: not sure whether we need to copy the data
+        collection[pos] = recv.copy()
+    
+    return collection
+
+
+
+
+
+    
+
 
 
 
