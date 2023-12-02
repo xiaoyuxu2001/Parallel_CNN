@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from tensorflow.keras.datasets import fashion_mnist
-from tensorflow.keras.utils import to_categorical
+import mygrad as mg
 import warnings
 warnings.filterwarnings("ignore")
 warnings.warn("this will not show")
@@ -18,15 +17,18 @@ pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
 # Set it to None to display all columns in the dataframe
 pd.set_option('display.max_columns', None)
-(X_train, y_train), (X_test, y_test) = fashion_mnist.load_data()
-print("There are ", len(X_train), "images in the training dataset")     
-print("There are ", len(X_test), "images in the test dataset")  
+# (X_train, y_train), (X_test, y_test) = fashion_mnist.load_data()
+# print("There are ", len(X_train), "images in the training dataset")     
+# print("There are ", len(X_test), "images in the test dataset")  
 
 ## Normalize the X train and X test using max value of the image arrays.
-X_train = X_train.astype('float32')
-X_test = X_test.astype('float32')
-X_train /= 255
-X_test /= 255
+train_df = pd.read_csv('data/mnist_train.csv')
+test_df = pd.read_csv('data/mnist_test.csv')
+
+X_train = train_df.iloc[:, 1:].values.astype('float32') / 255
+X_test = test_df.iloc[:, 1:].values.astype('float32') / 255
+y_train = train_df['label'].values.astype(int)
+y_test = test_df['label'].values.astype(int)
 
 # Reshape the X into 4 dimension
 X_train = X_train.reshape(X_train.shape[0],28, 28, 1) 
@@ -109,6 +111,9 @@ class DenseLayer:
             self.a = self.softmax(self.z)
         return self.a
     
+    def linear(self, input, weight, bias):
+        return np.dot(input, weight) + bias
+    
 class SequentialModel:
     def __init__(self):
         self.layers = []
@@ -126,49 +131,108 @@ class SequentialModel:
                 x = layer(x)
         return x
 
-
-def categorical_crossentropy(y_true, y_pred):
-    y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
-    return -np.sum(y_true * np.log(y_pred)) / y_true.shape[0]
-
-
-def accuracy(y_true, y_pred):
-    return np.mean(np.argmax(y_true, axis=1) == np.argmax(y_pred, axis=1))
+        
+    def categorical_crossentropy(y_true, y_pred):
+        y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
+        return -np.sum(y_true * np.log(y_pred)) / y_true.shape[0]
 
 
-## From model.compile in Keras
-def rmsprop(lr, rho, epsilon):
-    """
-    Define a basic RMSprop optimizer function generator in numpy.
+    def accuracy(y_true, y_pred):
+        return np.mean(np.argmax(y_true, axis=1) == np.argmax(y_pred, axis=1))
 
-    Parameters:
-    lr (float): Learning rate.
-    rho (float): Decay rate.
-    epsilon (float): Numerical stability term.
 
-    Returns:
-    function: A function to update the weights.
-    """
-    def update_weights(weights, gradients):
+    ## From model.compile in Keras
+    def rmsprop(lr, rho, epsilon):
         """
-        Update weights using RMSprop algorithm.
+        Define a basic RMSprop optimizer function generator in numpy.
 
         Parameters:
-        weights (list of np.array): Current weights of the model.
-        gradients (list of np.array): Gradients of the loss w.r.t weights.
+        lr (float): Learning rate.
+        rho (float): Decay rate.
+        epsilon (float): Numerical stability term.
 
         Returns:
-        list of np.array: Updated weights.
+        function: A function to update the weights.
         """
-        if not hasattr(update_weights, 's'):
-            update_weights.s = [np.zeros_like(w) for w in weights]
+        def update_weights(weights, gradients):
+            """
+            Update weights using RMSprop algorithm.
 
-        updated_weights = []
-        for w, g, s in zip(weights, gradients, update_weights.s):
-            s = rho * s + (1 - rho) * g**2
-            update_weights.s.append(s)
-            updated_weights.append(w - lr * g / (np.sqrt(s) + epsilon))
+            Parameters:
+            weights (list of np.array): Current weights of the model.
+            gradients (list of np.array): Gradients of the loss w.r.t weights.
 
-        return updated_weights
+            Returns:
+            list of np.array: Updated weights.
+            """
+            if not hasattr(update_weights, 's'):
+                update_weights.s = [np.zeros_like(w) for w in weights]
 
-    return update_weights
+            updated_weights = []
+            for w, g, s in zip(weights, gradients, update_weights.s):
+                s = rho * s + (1 - rho) * g**2
+                update_weights.s.append(s)
+                updated_weights.append(w - lr * g / (np.sqrt(s) + epsilon))
+
+            return updated_weights
+
+        return update_weights
+
+
+
+def train(X_train, y_train, X_test, y_test, epochs):
+    # Convolution
+    input = X_train
+    conv_filter = np.random.rand(3, 3, 1, 32)
+    conv_output = conv2d(input, conv_filter, stride=(1, 1))
+    conv_output = DenseLayer.relu(conv_output)
+    # Max Pooling
+    pool_output = maxpool2d(conv_output, pool_size=(2, 2), stride=(1, 1))
+    # Flatten
+    flat_output = flatten(pool_output)
+    # Dense Layer
+    weights_1 = np.random.rand(flat_output.size, 128) # Random weights
+    bias_1 = np.random.rand(128)
+    dense_output_1 =  DenseLayer.relu(DenseLayer.linear(flat_output, weights_1, bias_1))
+
+    # Output Layer
+    weights_2 = np.random.rand(128, 10) # Random weights for output layer
+    bias_2 = np.random.rand(10)
+    dense_output_2 =  DenseLayer.softmax(DenseLayer.linear(dense_output_1, weights_2, bias_2))
+
+        
+        
+def train(model, X_train, Y_train, X_test, Y_test, epochs, batch_size):
+    n_train = X_train.shape[0]
+    n_test = X_test.shape[0]
+
+    for epoch in range(epochs):
+        # Shuffle training data
+        perm = np.random.permutation(n_train)
+        X_train_shuffled = X_train[perm]
+        Y_train_shuffled = Y_train[perm]
+
+        # Mini-batch training
+        for i in range(0, n_train, batch_size):
+            X_batch = X_train_shuffled[i:i+batch_size]
+            Y_batch = Y_train_shuffled[i:i+batch_size]
+
+            # Forward pass
+            predictions = model.forward(X_batch)
+
+            # Calculate loss (Implement the loss calculation)
+            loss = model.categorical_crossentropy(Y_batch, predictions)
+
+            # Backward pass (Implement backpropagation to calculate gradients)
+            gradients = model.backward(Y_batch, predictions)
+
+            # Update weights (Implement the optimization algorithm to update weights)
+            model.update_weights(gradients)
+
+        # Validation accuracy after each epoch
+        val_predictions = model.forward(X_test)
+        val_accuracy = model.accuracy(Y_test, val_predictions)
+        print(f'Epoch {epoch+1}, Validation Accuracy: {val_accuracy}')
+
+    print('Training complete')
+ 
