@@ -1,4 +1,4 @@
-import mnist
+from tensorflow.keras.datasets import mnist
 import numpy as np
 from conv import Conv2d
 from maxpool import MaxPool2

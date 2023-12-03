@@ -5,7 +5,13 @@ import numpy as np
 
 # todo: improve the model, right now it is very shabby
 class CNN:
-    def __init__(self) -> None:
+    def __init__(self, input_size: int, output_size: int) -> None:
+
+
+        self.input_size = input_size
+        self.output_size = output_size
+
+
         self.conv = Conv2d(num_filters=32, kernel_size=(3, 3))
         self.pool = MaxPool2()
         self.flat = Flatten()
@@ -48,9 +54,6 @@ class CNN:
 
         # Backprop
         gradient = self.softmax.backprop(gradient, lr)  #(13, 13, 32)
-        # gradient = relu.backprop(gradient)
-        # gradient = dense.backprop(gradient, lr)
-        # gradient = flat.backprop(gradient, out_shape)
         gradient = self.pool.backprop(gradient) #(26, 26, 32)
         gradient = self.conv.backprop(gradient, lr)
         
