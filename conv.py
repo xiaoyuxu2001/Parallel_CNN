@@ -4,7 +4,8 @@ class Conv2d:
     """
     A Convolution layer with configurable filter sizes.
     """
-    def __init__(self, num_filters, kernel_size):
+    def __init__(self, num_filters, kernel_size, learning_rate):
+        self.learning_rate = learning_rate
         self.num_filters = num_filters
         self.kernel_size = kernel_size
         kernel_height, kernel_width = kernel_size
@@ -36,7 +37,7 @@ class Conv2d:
         self.last_input = input
         return self.conv2d(input)
 
-    def backprop(self, d_L_d_out, learn_rate):
+    def backprop(self, d_L_d_out):
         """
         Performs a backward pass of the conv layer.
         """
@@ -50,4 +51,4 @@ class Conv2d:
                     region = self.last_input[i:i+kernel_height, j:j+kernel_width]
                     d_L_d_filters[f] += d_L_d_out[i, j, f] * region
 
-        self.filters -= learn_rate * d_L_d_filters
+        self.filters -= self.lera * d_L_d_filters
