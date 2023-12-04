@@ -3,7 +3,7 @@ import numpy as np
 from conv import Conv2d
 from maxpool import MaxPool2
 from dense import Softmax, Relu, Flatten, Dense
-import sequential_cnn
+import sequential_cnn_final
 import argparse
 
 
@@ -16,8 +16,9 @@ def main():
   train_labels = mnist.train_labels()[:1000]
   test_images = mnist.test_images()[:1000]
   test_labels = mnist.test_labels()[:1000]
+  
 
-  cnn_model = sequential_cnn.CNN()
+  cnn_model = sequential_cnn_final.CNN()
 
   # Train the CNN for 3 epochs
   for epoch in range(3):
