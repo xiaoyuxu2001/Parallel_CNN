@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from mpi4py import MPI
-from sequential_cnn import CNN
+from sequential_cnn_final import CNN
 
 
 
@@ -94,8 +94,6 @@ def ring_all_reduce(all_data, comm, op):
         comm.Recv(recv, source=recv_from, tag=i)
         # add the received data to the corresponding position to the local data
         collection[(rank - i - 1) % size] = op(collection[(rank - i - 1) % size], recv)
-        # set a barrier to make sure that the data is received before the next iteration
-        comm.Barrier()
         
 
     # start boardcast stage: each worker send one slice of aggregated parameters to the next worker; repeat N times
@@ -114,3 +112,19 @@ def ring_all_reduce(all_data, comm, op):
         collection[pos] = recv.copy()
     
     return collection
+
+
+
+
+
+    
+
+
+
+
+
+
+
+    
+
+
