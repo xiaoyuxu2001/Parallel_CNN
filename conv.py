@@ -51,4 +51,4 @@ class Conv2d:
                     region = self.last_input[i:i+kernel_height, j:j+kernel_width]
                     d_L_d_filters[f] += d_L_d_out[i, j, f] * region
 
-        self.filters -= self.lera * d_L_d_filters
+        self.filters -= self.learning_rate * d_L_d_filters

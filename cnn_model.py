@@ -3,10 +3,15 @@ from maxpool import MaxPool2
 from dense import  Relu, Flatten, Dense, random_init, SoftMaxCrossEntropy, shuffle
 import numpy as np
 from typing import Callable, List, Tuple
+import logging
 
 # todo: improve the model, right now it is very shabby
 class CNN:
     def __init__(self, learning_rate) -> None:
+        # config
+        self.before_flat = (25, 25, 32)
+
+        # Initialize layers
         self.conv = Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate)
         self.relu1 = Relu()
         self.pool = MaxPool2()
@@ -27,9 +32,14 @@ class CNN:
         # We transform the image from [0, 255] to [-0.5, 0.5] to make it easier
         # to work with. This is standard practice.
         out = self.conv.forward((image / 255))
+        logging.debug("after conv", out.shape)
         out = self.relu1.forward(out)
+        logging.debug("after relu", out.shape)
         out = self.pool.forward(out)
+        logging.debug("after pool", out.shape)
+        self.before_flat = out.shape
         out = self.flat.forward(out)
+        logging.debug("after flat", out.shape)
         out = self.dense1.forward(out)
         out = self.relu2.forward(out)
         out = self.dense2.forward(out)
@@ -51,7 +61,7 @@ class CNN:
         gradient = self.dense2.backprop(gradient)
         gradient = self.relu2.backprop(gradient)
         gradient = self.dense1.backprop(gradient)
-        gradient = self.flat.backprop(gradient)
+        gradient = self.flat.backprop(gradient, self.before_flat)
         gradient = self.pool.backprop(gradient)
         gradient = self.relu1.backprop(gradient)
         gradient = self.conv.backprop(gradient)
@@ -95,11 +105,11 @@ class CNN:
         train_loss_list = []
         test_loss_list = []
         for e in range (n_epochs):
-            print('--- Epoch %d ---' % (n_epochs + 1))
+            print('--- Epoch %d ---' % (e + 1))
             X_s, y_s = shuffle(X_tr, y_tr, e)
             for i, (im, label) in enumerate(zip(X_s, y_s)):
                 y_hat, loss = self.forward(X_s[i], y_s[i])
-                self.backward(y_s[i], y_hat)
+                self.backprop(y_s[i], y_hat)
                 self.step()
             train_loss = self.compute_loss(X_tr, y_tr)
             train_loss_list.append(train_loss)
