@@ -28,15 +28,20 @@ class MaxPool2:
         Performs a forward pass of the maxpool layer using the given input.
         '''
         self.last_input = input
-        n_rows, n_cols, n_channels = input.shape
-        out_rows = (n_rows // self.pool_size)
-        out_cols = (n_cols // self.pool_size)
+        width, height, n_channels = input.shape
+        pooled_height = height - 1  # since 2x2 pooling, reduce dimension by 1
+        pooled_width = width - 1
 
-        output = np.zeros((out_rows, out_cols, n_channels))
+        pooled_array = np.zeros((pooled_width, pooled_height, n_channels))
+        for channel in range(n_channels):
+            for i in range(pooled_height):
+                for j in range(pooled_width):
+                    window = input[i:i+2, j:j+2, channel]
+                    pooled_array[i, j, channel] = np.max(window)
 
-        for im_region, i, j in self.iterate_regions(input):
-            output[i, j] = np.amax(im_region, axis=(0, 1))
-        return output
+        return pooled_array
+
+        # maxpooling
     
     def backprop(self, d_L_d_out):
         '''

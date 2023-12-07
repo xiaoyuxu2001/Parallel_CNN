@@ -1,8 +1,5 @@
 import mnist
 import numpy as np
-from conv import Conv2d
-from maxpool import MaxPool2
-from dense import Softmax, Relu, Flatten, Dense
 import sequential_cnn_final
 import argparse
 
