@@ -12,14 +12,16 @@ class CNN:
         self.before_flat = (25, 25, 32)
 
         # Initialize layers
-        self.conv = Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate)
-        self.relu1 = Relu()
-        self.pool = MaxPool2()
-        self.flat = Flatten()
-        self.dense1 = Linear(20000, 128, random_init, learning_rate)
-        self.relu2 = Relu()
-        self.dense2 = Linear(128, 10, random_init, learning_rate)
-        self.softmax = SoftMaxCrossEntropy()
+        self.layers = [
+            Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate),
+            Relu(),
+            MaxPool2(),
+            Flatten(),
+            Linear(20000, 128, random_init, learning_rate),
+            Relu(),
+            Linear(128, 10, random_init, learning_rate),
+            SoftMaxCrossEntropy()
+        ]
         print('MNIST CNN initialized!')
     
     def forward(self, image, label):
@@ -31,21 +33,16 @@ class CNN:
         
         # We transform the image from [0, 255] to [-0.5, 0.5] to make it easier
         # to work with. This is standard practice.
-        out = self.conv.forward((image / 255))
-        logging.debug("after conv", out.shape)
-        out = self.relu1.forward(out)
-        logging.debug("after relu", out.shape)
-        out = self.pool.forward(out)
-        logging.debug("after pool", out.shape)
-        self.before_flat = out.shape
-        out = self.flat.forward(out)
-        logging.debug("after flat", out.shape)
-        out = self.dense1.forward(out)
-        out = self.relu2.forward(out)
-        out = self.dense2.forward(out)
-        y_hat, loss = self.softmax.forward(out, label)
+        # Forward pass through each layer
+        out = image / 255  # Normalize input
+        for layer in self.layers[:-1]:  # Exclude last layer (SoftMaxCrossEntropy)
+            out = layer.forward(out)
+            if isinstance(layer, MaxPool2):
+                logging.debug("after pool", out.shape)
+                self.before_flat = out.shape
+        y_hat, loss = self.layers[-1].forward(out, label)  # Last layer, softmax
+        return y_hat, loss 
 
-        return y_hat, loss
     
     def backprop(self, label, label_hat):
         '''
@@ -55,23 +52,23 @@ class CNN:
         - label is a digit
         - lr is the learning rate
         '''
-
-        # Backprop
-        gradient = self.softmax.backprop(label, label_hat)  
-        gradient = self.dense2.backprop(gradient)
-        gradient = self.relu2.backprop(gradient)
-        gradient = self.dense1.backprop(gradient)
-        gradient = self.flat.backprop(gradient, self.before_flat)
-        gradient = self.pool.backprop(gradient)
-        gradient = self.relu1.backprop(gradient)
-        gradient = self.conv.backprop(gradient)
-    
+        # Backpropagation through each layer in reverse order
+        gradient = self.layers[-1].backprop(label, label_hat)  # Start with last layer
+        for layer in reversed(self.layers[:-1]):
+            if isinstance(layer, Flatten):
+                gradient = layer.backprop(gradient,self.before_flat) 
+            else:   
+                gradient = layer.backprop(gradient)    
+            
+            
     def step(self):
         """
         Apply GD update to weights.
         """
-        self.dense1.step()
-        self.dense2.step()
+        for layer in self.layers:
+            if hasattr(layer, 'step'):
+                layer.step()
+                
 
         # conv layer has been udpated in the process of backprop
 

@@ -69,10 +69,3 @@ def agg_gradient(model):
                 # Sum up gradients from all workers
                 layer.dw = np.sum(recv_buff, axis=0)
 
-
-
-
-
-
-
-

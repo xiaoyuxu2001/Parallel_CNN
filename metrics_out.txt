@@ -1,8 +1,8 @@
-epoch=1 crossentropy(train): 2.2990788813450713
-epoch=1 crossentropy(validation): 2.300004454803267
-epoch=2 crossentropy(train): 2.295895228964889
-epoch=2 crossentropy(validation): 2.2976607767576254
-epoch=3 crossentropy(train): 2.292988635692634
-epoch=3 crossentropy(validation): 2.2956429283806874
-error(train): 0.86
-error(test): 0.86
+epoch=1 crossentropy(train): 2.298636314214847
+epoch=1 crossentropy(validation): 2.300170140838741
+epoch=2 crossentropy(train): 2.2946959646198115
+epoch=2 crossentropy(validation): 2.2977201061142445
+epoch=3 crossentropy(train): 2.290788607056387
+epoch=3 crossentropy(validation): 2.2952973467573323
+error(train): 0.7
+error(test): 0.8
