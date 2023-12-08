@@ -50,11 +50,12 @@ def data_parallel_forward(data, comm, model):
     # send the data to each process
     split = comm.scatter(partition, root=0)
     # apply the forward pass on each process
-    partial_conv = model.conv.forward(split)
-    partial_res = model.pool.forward(partial_conv)
+    partial_conv = model.layers[0].forward(split) ## Conv2d layer
+    
+    partial_res = model.layers[2].forward(partial_conv) ## MaxPool2 layer
 
     # flatten the data
-    partial_flatten = model.flatten(partial_res)
+    partial_flatten = model.layers[2](partial_res) ## Flatten layer
 
     # use allgatherv to collect the data from each process
     # calculate the size of the data to be received
