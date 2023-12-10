@@ -2,15 +2,20 @@ from cnn_model import CNN
 import mnist
 import argparse
 import time
+import numpy as np
 
 def main(args):
       # We only use the first 1k examples of each set in the interest of time.
   # Feel free to change this if you want.
   image_num = args.num_image
-  train_images = mnist.train_images()[0:image_num]
-  train_labels = mnist.train_labels()[0:image_num]
-  test_images = mnist.test_images()[0:image_num]
-  test_labels = mnist.test_labels()[0:image_num]
+  
+  train_idx = np.random.choice(len(mnist.train_images()), image_num)
+  train_images = mnist.train_images()[train_idx]
+  train_labels = mnist.train_labels()[train_idx]
+  print(train_labels)
+  test_idx = np.random.choice(len(mnist.test_images()), image_num)
+  test_images = mnist.test_images()[test_idx]
+  test_labels = mnist.test_labels()[test_idx]
   
   labels = ['0','1', '2', '3', '4', '5', '6', '7', '8', '9']
     

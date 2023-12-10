@@ -47,6 +47,7 @@ class CNN:
                 self.before_flat = out.shape
             n+=1
         y_hat, loss = self.layers[-1].forward(out, label)  # Last layer, softmax
+        print(np.argmax(y_hat))
         return y_hat, loss 
 
     

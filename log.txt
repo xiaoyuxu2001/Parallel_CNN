@@ -1,32 +1,92 @@
 MNIST CNN initialized!
 --- Epoch 1 ---
-train loss:  2.437230718608287
-test loss:  2.3260897233406306
+train loss:  2.35476808257015
+test loss:  2.340454697286107
 --- Epoch 2 ---
-train loss:  2.480744092074165
-test loss:  2.321834607861148
+train loss:  2.4369671798459964
+test loss:  2.3539218469469825
 --- Epoch 3 ---
-train loss:  2.4910078965705655
-test loss:  2.331358528093427
+train loss:  2.5679230613280106
+test loss:  2.4247879708355584
 --- Epoch 4 ---
-train loss:  2.48231507381528
-test loss:  2.3397229130734396
+train loss:  2.661990872553605
+test loss:  2.5104756380016533
 --- Epoch 5 ---
-train loss:  2.464026325296566
-test loss:  2.3424001545380557
+train loss:  2.7234346555072317
+test loss:  2.608104607839916
 --- Epoch 6 ---
-train loss:  2.4553965269440834
-test loss:  2.331787852016078
+train loss:  2.769092161117855
+test loss:  2.668732738244736
 --- Epoch 7 ---
-train loss:  2.4302135588845566
-test loss:  2.322911218418627
+train loss:  2.848161613600627
+test loss:  2.7459354893598302
 --- Epoch 8 ---
-train loss:  2.3867596442651866
-test loss:  2.3175246583537863
+train loss:  3.0169595815602355
+test loss:  3.055137910836713
 --- Epoch 9 ---
-train loss:  2.3183215367644445
-test loss:  2.2989865850760043
+train loss:  2.299219023443303
+test loss:  2.879649969881362
 --- Epoch 10 ---
-train loss:  2.2569282890721083
-test loss:  2.3461489146553802
+train loss:  2.0071326639144624
+test loss:  2.9998909382326806
 --- Epoch 11 ---
+train loss:  1.8414303741891167
+test loss:  2.6105411305815567
+--- Epoch 12 ---
+train loss:  1.7748302025152434
+test loss:  2.4097165152963838
+--- Epoch 13 ---
+train loss:  1.9006519382554952
+test loss:  2.3200861584106938
+--- Epoch 14 ---
+train loss:  1.9283845304212346
+test loss:  2.2094504460578515
+--- Epoch 15 ---
+train loss:  2.0886566130978714
+test loss:  2.429117413592855
+--- Epoch 16 ---
+train loss:  2.0110174253154884
+test loss:  2.246163941265323
+--- Epoch 17 ---
+train loss:  2.045941027624939
+test loss:  2.2749658964773856
+--- Epoch 18 ---
+train loss:  2.075226931334283
+test loss:  2.3100921365594482
+--- Epoch 19 ---
+train loss:  2.0940321337034
+test loss:  2.286322605573539
+--- Epoch 20 ---
+train loss:  2.0851651166888217
+test loss:  2.260647605430692
+--- Epoch 21 ---
+train loss:  2.076532518990338
+test loss:  2.254166657752601
+--- Epoch 22 ---
+train loss:  2.089258188107734
+test loss:  2.2130391528741233
+--- Epoch 23 ---
+train loss:  2.099842321169589
+test loss:  2.211346184095833
+--- Epoch 24 ---
+train loss:  2.1108628590643024
+test loss:  2.2098002550645486
+--- Epoch 25 ---
+train loss:  2.1084515124115812
+test loss:  2.208523388831661
+--- Epoch 26 ---
+train loss:  2.20067549564559
+test loss:  2.2441752951229246
+--- Epoch 27 ---
+train loss:  2.2052481728286097
+test loss:  2.233612247512163
+--- Epoch 28 ---
+train loss:  2.2324141094585226
+test loss:  2.233431950666705
+--- Epoch 29 ---
+train loss:  2.228463499783765
+test loss:  2.2213248455726604
+--- Epoch 30 ---
+train loss:  2.2267715209572776
+test loss:  2.220961336949476
+Time for training:  54.61 s
