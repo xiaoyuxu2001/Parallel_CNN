@@ -10,23 +10,25 @@ class MaxPool2:
         
     def iterate_regions(self, image):
         '''
-        Generates non-overlapping 2x2 image regions to pool over.
+        Generates non-overlapping (???) 2x2 image regions to pool over.
         - image is a 2d numpy array
         '''
         h, w, _ = image.shape
-        new_h = h // self.pool_size
-        new_w = w // self.pool_size
+        # new_h = h // self.pool_size
+        new_h = h-self.stride
+        # new_w = w // self.pool_size
+        new_w = w-self.stride
 
         for i in range(new_h):
             for j in range(new_w):
-                im_region = image[(i * self.pool_size):(i * self.pool_size+ self.pool_size),\
-                                (j * self.pool_size):(j * self.pool_size + self.pool_size)]
+                im_region = image[i:i+ self.pool_size, j:j+ self.pool_size]
                 yield im_region, i, j
                 
     def forward(self, input):
         '''
         Performs a forward pass of the maxpool layer using the given input.
         '''
+        # print("forwarding: maxpool")
         self.last_input = input
         width, height, n_channels = input.shape
         pooled_height = height - 1  # since 2x2 pooling, reduce dimension by 1
@@ -51,13 +53,13 @@ class MaxPool2:
 
         for im_region, i, j in self.iterate_regions(self.last_input):
             h, w, f = im_region.shape
-            amax = np.amax(im_region, axis=(0, 1))
+            amax = np.max(im_region, axis=(0, 1))
 
             for i2 in range(h):
                 for j2 in range(w):
                     for f2 in range(f):
                         # If this pixel was the max value, copy the gradient to it.
                         if im_region[i2, j2, f2] == amax[f2]:
-                            d_L_d_input[i * self.pool_size + i2, j * self.pool_size  + j2, f2] = d_L_d_out[i, j, f2]
+                            d_L_d_input[i + i2, j+ j2, f2] = d_L_d_out[i, j, f2]
 
         return d_L_d_input

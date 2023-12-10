@@ -6,7 +6,7 @@ import time
 def main(args):
       # We only use the first 1k examples of each set in the interest of time.
   # Feel free to change this if you want.
-  image_num = 100
+  image_num = args.num_image
   train_images = mnist.train_images()[0:image_num]
   train_labels = mnist.train_labels()[0:image_num]
   test_images = mnist.test_images()[0:image_num]
@@ -19,8 +19,9 @@ def main(args):
   )
 #   calculate time for training
   start_time = time.time()
-  train_losses, test_losses = cnn.train(train_images, train_labels, test_images, test_labels, n_epochs=3)
+  train_losses, test_losses = cnn.train(train_images, train_labels, test_images, test_labels, n_epochs=args.num_epoch)
   end_time = time.time()
+#   print("filter after training: ", cnn.layers[0].filters)
   print("Time for training: ", format(end_time - start_time, '.2f'), "s")
   train_labels, train_error_rate = cnn.test(train_images, train_labels)
   test_labels, test_error_rate = cnn.test(test_images, test_labels)
@@ -57,11 +58,12 @@ if __name__ == '__main__':
                       help='path to store training and testing metrics')
   parser.add_argument('--num_epoch', type=int, default=10,
                       help='number of training epochs')
+  parser.add_argument('--num_image', type=int, default=50, help='number of images used')
   # parser.add_argument('hidden_units', type=int,
   #                     help='number of hidden units')
   # parser.add_argument('init_flag', type=int, choices=[1, 2],
   #                     help='weight initialization functions, 1: random')
-  parser.add_argument('--learning_rate', type=float, default=0.005,
+  parser.add_argument('--learning_rate', type=float, default=0.05,
                       help='learning rate')
   args = parser.parse_args()
   main(args)
