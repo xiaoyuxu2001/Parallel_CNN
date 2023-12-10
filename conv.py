@@ -31,11 +31,13 @@ class Conv2d:
 
         return output
 
-    def forward(self, input):
+    def forward(self, input, epoch):
         """
         Performs a forward pass of the conv layer using the given input.
         """
         # print("forwarding: conv")
+        if epoch != 0:
+            self.learning_rate = self.learning_rate * epoch / (epoch+1)
         self.last_input = input
         return self.conv2d(input)
 
