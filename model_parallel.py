@@ -1,71 +1,65 @@
-# Apply model parallelism on fully connected layers.
-
-import numpy as np
 from mpi4py import MPI
-import pandas as pd
-import matplotlib.pyplot as plt
-import warnings
-import mnist
-from cnn_model import Linear
+import numpy as np
+from typing import Callable, Tuple
 
-warnings.filterwarnings("ignore")
-warnings.warn("this will not show")
-plt.rcParams["figure.figsize"] = (10,6)
-pd.set_option('display.float_format', lambda x: '%.3f' % x)
-# Set it to None to display all columns in the dataframe
-pd.set_option('display.max_columns', None)
+INIT_FN_TYPE = Callable[[Tuple[int, int]], np.ndarray]
 
-comm = MPI.COMM_WORLD
-size = comm.Get_size()
-rank = comm.Get_rank()
+class Parallel_Linear:
+    def __init__(self, input_size: int, output_size: int,
+                 weight_init_fn: INIT_FN_TYPE, learning_rate: float):
+        self.comm = MPI.COMM_WORLD
+        self.rank = self.comm.Get_rank()
+        self.size = self.comm.Get_size()
+        
+        # Initialize learning rate for SGD
+        self.lr = learning_rate
+        
+        # Determine the local output size based on the number of devices
+        local_output_size = output_size // self.size
+        if self.rank == self.size - 1:
+            local_output_size += output_size % self.size
+        
+        # Initialize weights for the local tensor
+        self.local_w = weight_init_fn((local_output_size, input_size + 1))
+        self.local_w[:, 0] = 0  # Set bias weights to 0
+        
+        # Initialize gradients
+        self.local_dw = np.zeros_like(self.local_w)
+        self.input = None
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        # Insert bias term
+        x = np.insert(x, 0, 1, axis=1)
+        self.input = x
+        
+        # Perform the local part of the forward pass
+        local_y = np.dot(x, self.local_w.T)
+        
+        # Gather the outputs from all workers to form the full output
+        gathered_y = None
+        if self.rank == 0:
+            gathered_y = np.empty((x.shape[0], self.local_w.shape[0] * self.size), dtype=np.float64)
+        
+        self.comm.Gather(local_y, gathered_y, root=0)
+        
+        # Only the root process will have the complete output
+        return gathered_y
+
+    def backward(self, dz: np.ndarray) -> np.ndarray:
+        # Scatter the gradient among all workers
+        local_dz = np.empty((dz.shape[0], self.local_w.shape[0]), dtype=np.float64)
+        self.comm.Scatter(dz, local_dz, root=0)
+        
+        # Compute local gradients for weights
+        self.local_dw = np.dot(local_dz.T, self.input)
+        
+        # Compute gradient for input
+        grad_input = np.dot(local_dz, self.local_w[:, 1:])
+        return grad_input
+    
+    def step(self) -> None:
+        # Update local weights with local gradients
+        self.local_w -= self.lr * self.local_dw
 
 
-train_images = mnist.train_images()[:1000]
-train_labels = mnist.train_labels()[:1000]
-test_images = mnist.test_images()[:1000]
-test_labels = mnist.test_labels()[:1000]
-   
-
-def find_batch(images, labels, size, rank):
-    # Convert the features to float32 and normalize using max value of the image arrays.
-    X = images.values.astype('float32') / 255
-    # Convert the labels to int
-    y = labels.values.astype(int)
-    # Calculate the size of each chunk
-    chunk_size = len(X) // size
-    # Determine the start and end indices for slicing
-    start_idx = rank * chunk_size
-    end_idx = None if rank == size - 1 else (rank + 1) * chunk_size
-    # Slice the arrays and return
-    return X[start_idx:end_idx], y[start_idx:end_idx]
-
-
-def distribute_activations(last_stage_activations):
-    # Divide the last-stage convolutional layer activities among all workers
-    # Each worker sends 1/K of their data to all other workers
-    send_buf = np.array_split(last_stage_activations, size)
-    recv_buf = np.empty_like(send_buf)
-    # distribute the chunks to all processes
-    comm.Alltoall(send_buf, recv_buf)
-    # Concatenate the received chunks to form the full batch for this worker
-    concatenated_activations = np.concatenate(recv_buf)
-    return concatenated_activations
-
-def bcast_weights(model):
-    # Broadcast the weights of the fully-connected layers to all workers
-    for layer in model.layers:
-        if isinstance(layer, Linear):
-            comm.Bcast(layer.w, root=0)
-
-def agg_gradient(model):
-    # Aggregate the gradients of the fully-connected layers from all workers
-    for layer in model.layers:
-        if isinstance(layer, Linear):
-            # Initialize buffer to gather gradients from all workers
-            recv_buff = np.empty((size, *layer.dw.shape), dtype=float) if rank == 0 else None
-            # Gather gradients from all workers at the root
-            comm.Gather(layer.dw, recv_buff, root=0)
-            if rank == 0:
-                # Sum up gradients from all workers
-                layer.dw = np.sum(recv_buff, axis=0)
-
+    
