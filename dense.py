@@ -109,7 +109,7 @@ class Relu:
         Performs a backward pass of the ReLU activation.
         """
         d_L_d_input = d_L_d_out.copy()
-        d_L_d_input = np.where(d_L_d_input > 0, 1, 0)
+        d_L_d_input = np.where(d_L_d_input > 0, d_L_d_input, 0)
         return d_L_d_input
 
     

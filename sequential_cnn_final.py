@@ -6,17 +6,32 @@ import numpy as np
 
 def main(args):
       # We only use the first 1k examples of each set in the interest of time.
-  # Feel free to change this if you want.
+    # Feel free to change this if you want.
   image_num = args.num_image
   
-  train_idx = np.random.choice(len(mnist.train_images()), image_num)
-  train_images = mnist.train_images()[train_idx]
-  train_labels = mnist.train_labels()[train_idx]
-  print(train_labels)
-  test_idx = np.random.choice(len(mnist.test_images()), image_num)
-  test_images = mnist.test_images()[test_idx]
-  test_labels = mnist.test_labels()[test_idx]
+
+  train_0s = np.where(mnist.train_labels() == 0)[0] 
+  test_0s = np.where(mnist.test_labels() == 0)[0]
+  train_1s = np.where(mnist.train_labels() == 1)[0]
+  test_1s = np.where(mnist.test_labels() == 1)[0]
+  train_idxs = np.empty(image_num, dtype=int)
+  train_idxs[:image_num // 2] = np.random.choice(train_0s, image_num // 2)
+  train_idxs[image_num//2:] = np.random.choice(train_1s, image_num - image_num // 2)
+  test_idxs = np.empty(image_num, dtype=int)
+  test_idxs[:image_num // 2] = np.random.choice(test_0s, image_num // 2)
+  test_idxs[image_num//2:] = np.random.choice(test_1s, image_num - image_num // 2)
+
   
+  
+#   train_idx = np.random.choice(len(mnist.train_images()), image_num)
+  train_images = mnist.train_images()[train_idxs]
+  train_labels = mnist.train_labels()[train_idxs]
+  print(train_labels)
+#   test_idx = np.random.choice(len(mnist.test_images()), image_num)
+  test_images = mnist.test_images()[test_idxs]
+  test_labels = mnist.test_labels()[test_idxs]
+
+
   labels = ['0','1', '2', '3', '4', '5', '6', '7', '8', '9']
     
   cnn = CNN(
@@ -40,11 +55,8 @@ def main(args):
       for i in range(len(train_losses)):
           cur_epoch = i + 1
           cur_tr_loss = train_losses[i]
-          cur_te_loss = test_losses[i]
           f.write("epoch={} crossentropy(train): {}\n".format(
               cur_epoch, cur_tr_loss))
-          f.write("epoch={} crossentropy(validation): {}\n".format(
-              cur_epoch, cur_te_loss))
       f.write("error(train): {}\n".format(train_error_rate))
       f.write("error(test): {}\n".format(test_error_rate))
 

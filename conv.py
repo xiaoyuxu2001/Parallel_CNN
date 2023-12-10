@@ -33,15 +33,13 @@ class Conv2d:
                 for k in range(n_filters):
                     output[i, j, k] = np.sum(np.multiply(input[i:i+kernel_height, j:j+kernel_width], self.filters[:, :, k])) + self.bias[k]
 
+
         return output
 
     def forward(self, input, epoch):
         """
         Performs a forward pass of the conv layer using the given input.
         """
-        # print("forwarding: conv")
-        # if epoch != 0 and epoch != 1:
-            # self.learning_rate = self.learning_rate * (epoch-1) / (epoch)
         self.last_input = input
         return self.conv2d(input)
 
@@ -61,11 +59,14 @@ class Conv2d:
                     d_L_d_filters[:, :, f] += d_L_d_out[i, j, f] * region
                     d_L_d_bias[f] += d_L_d_out[i, j, f]
         
-        rms_f = np.sqrt(self.h + 1e-8)
-        rms_b = np.sqrt(self.hb + 1e-8)
+        # rms_f = np.sqrt(self.h + 1e-8)
+        # rms_b = np.sqrt(self.hb + 1e-8)
 
-        self.filters -= self.learning_rate * np.multiply(1/rms_f, d_L_d_filters)
-        self.bias -= self.learning_rate * np.multiply(1/rms_b, d_L_d_bias)
+        # self.filters -= self.learning_rate * np.multiply(1/rms_f, d_L_d_filters)
+        # self.bias -= self.learning_rate * np.multiply(1/rms_b, d_L_d_bias)
 
-        self.h = (1-self.rmsprop_rate) * np.square(d_L_d_filters) + self.rmsprop_rate * self.h
-        self.hb = (1-self.rmsprop_rate) * np.square(d_L_d_bias) + self.rmsprop_rate * self.hb
+        # self.h = (1-self.rmsprop_rate) * np.square(d_L_d_filters) + self.rmsprop_rate * self.h
+        # self.hb = (1-self.rmsprop_rate) * np.square(d_L_d_bias) + self.rmsprop_rate * self.hb
+
+        self.filters -= self.learning_rate * d_L_d_filters
+        self.bias -= self.learning_rate * d_L_d_bias

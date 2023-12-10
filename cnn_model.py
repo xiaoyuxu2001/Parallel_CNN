@@ -18,7 +18,7 @@ class CNN:
             MaxPool2(),
             Flatten(),
             Linear(20000, 128, random_init, learning_rate),
-            Relu(),
+            # Relu(),
             Linear(128, 2, random_init, learning_rate),
             SoftMaxCrossEntropy()
         ]
@@ -46,7 +46,7 @@ class CNN:
                 self.before_flat = out.shape
             n+=1
         y_hat, loss = self.layers[-1].forward(out, label)  # Last layer, softmax
-        # print(np.argmax(y_hat))
+        print(y_hat)
         return y_hat, loss 
 
     
@@ -60,12 +60,15 @@ class CNN:
         '''
         # Backpropagation through each layer in reverse order
         gradient = self.layers[-1].backprop(label, label_hat)  # Start with last layer
+        print("gradient: ", np.linalg.norm(gradient))
+        if np.linalg.norm(gradient) < 1e-10:
+            return True
         for layer in reversed(self.layers[:-1]):
             if isinstance(layer, Flatten):
                 gradient = layer.backprop(gradient,self.before_flat) 
             else:   
-                gradient = layer.backprop(gradient)    
-            
+                gradient = layer.backprop(gradient) 
+        return False
             
     def step(self):
         """
@@ -112,21 +115,23 @@ class CNN:
             # X_s, y_s = shuffle(X_tr, y_tr, e)
             index = np.random.choice(len(X_tr)) 
             X_s, y_s = X_tr[index], y_tr[index]
+            print(y_s)
             y_hat, loss = self.forward(X_s, y_s, e)
-            self.backprop(y_s, y_hat)
+            if self.backprop(y_s, y_hat):
+                break
             self.step()
 
             # for i, (im, label) in enumerate(zip(X_s, y_s)):
                 # y_hat, loss = self.forward(X_s[i], y_s[i])
                 # self.backprop(y_s[i], y_hat)
                 # self.step()
-            if e % 5 == 0:
+            if e % 500 == 0 and e!= 0:
                 train_loss = self.compute_loss(X_tr, y_tr)
                 print("train loss: ", train_loss)
                 train_loss_list.append(train_loss)
-                test_loss = self.compute_loss(X_test, y_test)
-                print("test loss: ", test_loss)
-                test_loss_list.append(test_loss)
+                # test_loss = self.compute_loss(X_test, y_test)
+                # print("test loss: ", test_loss)
+                # test_loss_list.append(test_loss)
         return train_loss_list, test_loss_list
     
 
