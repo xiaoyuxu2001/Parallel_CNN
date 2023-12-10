@@ -24,7 +24,7 @@ class CNN:
         ]
         print('MNIST CNN initialized!')
     
-    def forward(self, image, label):
+    def forward(self, image, label, epoch):
         '''
         Completes a forward pass of the CNN and calculates the loss and prediction
         - image is a 2d numpy array
@@ -35,12 +35,19 @@ class CNN:
         # to work with. This is standard practice.
         # Forward pass through each layer
         out = image / 255  # Normalize input
+        out = out - 0.5
+        n = 0
         for layer in self.layers[:-1]:  # Exclude last layer (SoftMaxCrossEntropy)
-            out = layer.forward(out)
+            if isinstance(layer, Conv2d):
+                out = layer.forward(out, epoch)
+            else:
+                out = layer.forward(out)
             if isinstance(layer, MaxPool2):
                 logging.debug("after pool", out.shape)
                 self.before_flat = out.shape
+            n+=1
         y_hat, loss = self.layers[-1].forward(out, label)  # Last layer, softmax
+        print(np.argmax(y_hat))
         return y_hat, loss 
 
     
@@ -81,7 +88,7 @@ class CNN:
         """
         loss = 0
         for i in range(len(X)):
-            y_hat_i, loss_i = self.forward(X[i], y[i])
+            y_hat_i, loss_i = self.forward(X[i], y[i], 0)
             loss += loss_i
         return loss / len(X)
     
@@ -103,14 +110,23 @@ class CNN:
         test_loss_list = []
         for e in range (n_epochs):
             print('--- Epoch %d ---' % (e + 1))
-            X_s, y_s = shuffle(X_tr, y_tr, e)
-            for i, (im, label) in enumerate(zip(X_s, y_s)):
-                y_hat, loss = self.forward(X_s[i], y_s[i])
-                self.backprop(y_s[i], y_hat)
-                self.step()
+            # X_s, y_s = shuffle(X_tr, y_tr, e)
+            index = np.random.choice(len(X_tr)) 
+            X_s, y_s = X_tr[index], y_tr[index]
+            y_hat, loss = self.forward(X_s, y_s, e)
+            self.backprop(y_s, y_hat)
+            self.step()
+
+            # for i, (im, label) in enumerate(zip(X_s, y_s)):
+                # y_hat, loss = self.forward(X_s[i], y_s[i])
+                # self.backprop(y_s[i], y_hat)
+                # self.step()
+
             train_loss = self.compute_loss(X_tr, y_tr)
+            print("train loss: ", train_loss)
             train_loss_list.append(train_loss)
             test_loss = self.compute_loss(X_test, y_test)
+            print("test loss: ", test_loss)
             test_loss_list.append(test_loss)
         return train_loss_list, test_loss_list
     
@@ -127,7 +143,7 @@ class CNN:
         y_predict_list = np.zeros(len(X))
         error = 0
         for i in range(len(X)):
-            y_hat, loss = self.forward(X[i], y[i])
+            y_hat, loss = self.forward(X[i], y[i], 0)
             y_predict = np.argmax(y_hat)
             y_predict_list[i] = y_predict
             if y_predict != y[i]:

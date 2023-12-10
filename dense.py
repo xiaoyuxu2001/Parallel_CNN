@@ -23,8 +23,6 @@ def flatten(input_array):
 
 def zero_init(shape : Tuple[int, int]) -> np.ndarray:
     """
-    DO NOT modify this function.
-
     ZERO Initialization: All weights are initialized to 0.
 
     :param shape: list or tuple of shapes
@@ -45,9 +43,6 @@ def random_init(shape : Tuple[int, int]) -> np.ndarray:
     M, D = shape
     np.random.seed(M * D)  # Don't change this line!
 
-    # TODO: create the random matrix here!
-    # Hint: numpy might have some useful function for this
-    # Hint: make sure you have the right distribution
     W = np.random.uniform(-0.1, 0.1, shape)
     return W
 
