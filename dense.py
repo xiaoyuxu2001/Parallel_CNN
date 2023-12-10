@@ -134,8 +134,8 @@ class SoftMaxCrossEntropy:
         """
         # TODO: implement
         # This is because we have 10 classes in total, if failed, that means my assumption is wrong
-        assert(len(y_hat) == 10)
-        assert(y >= 0 and y < 10)
+        # assert(len(y_hat) == 10)
+        # assert(y >= 0 and y < 10)
         
         loss = -np.log(y_hat[y])
         

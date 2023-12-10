@@ -1,22 +1,22 @@
-epoch=1 crossentropy(train): 8.111708878182771
-epoch=1 crossentropy(validation): 8.513835868927195
-epoch=2 crossentropy(train): 4.35830352747142
-epoch=2 crossentropy(validation): 4.178666115227586
-epoch=3 crossentropy(train): 2.9713904278129504
-epoch=3 crossentropy(validation): 3.2181286590256715
-epoch=4 crossentropy(train): 2.322565649011624
-epoch=4 crossentropy(validation): 2.3977016078800433
-epoch=5 crossentropy(train): 2.3289237826806044
-epoch=5 crossentropy(validation): 2.469520405998998
-epoch=6 crossentropy(train): 2.344544070044335
-epoch=6 crossentropy(validation): 2.3747488638935894
-epoch=7 crossentropy(train): 2.3570668355767403
-epoch=7 crossentropy(validation): 2.407059712841421
-epoch=8 crossentropy(train): 2.3305981417081
-epoch=8 crossentropy(validation): 2.39590636408074
-epoch=9 crossentropy(train): 2.3368354036896544
-epoch=9 crossentropy(validation): 2.435284064410414
-epoch=10 crossentropy(train): 2.3388883200894774
-epoch=10 crossentropy(validation): 2.4841179291724056
-error(train): 0.78
-error(test): 0.9
+epoch=1 crossentropy(train): 0.6840175428536548
+epoch=1 crossentropy(validation): 0.6856139625689555
+epoch=2 crossentropy(train): 0.6620181269791625
+epoch=2 crossentropy(validation): 0.6675352469734516
+epoch=3 crossentropy(train): 0.6497634934731085
+epoch=3 crossentropy(validation): 0.6575123598129714
+epoch=4 crossentropy(train): 0.6295099925459471
+epoch=4 crossentropy(validation): 0.641027530969513
+epoch=5 crossentropy(train): 0.6102870324408172
+epoch=5 crossentropy(validation): 0.625480417066998
+epoch=6 crossentropy(train): 0.5920397645447186
+epoch=6 crossentropy(validation): 0.6108187888639336
+epoch=7 crossentropy(train): 0.5747155803753641
+epoch=7 crossentropy(validation): 0.5969926552226912
+epoch=8 crossentropy(train): 0.5582641697712648
+epoch=8 crossentropy(validation): 0.5839543088674025
+epoch=9 crossentropy(train): 0.5573858247307164
+epoch=9 crossentropy(validation): 0.5832608203452906
+epoch=10 crossentropy(train): 0.5418031128700251
+epoch=10 crossentropy(validation): 0.5710043165716165
+error(train): 0.04
+error(test): 0.12

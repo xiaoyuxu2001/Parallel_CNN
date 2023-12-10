@@ -19,7 +19,7 @@ class CNN:
             Flatten(),
             Linear(20000, 128, random_init, learning_rate),
             Relu(),
-            Linear(128, 10, random_init, learning_rate),
+            Linear(128, 2, random_init, learning_rate),
             SoftMaxCrossEntropy()
         ]
         print('MNIST CNN initialized!')
@@ -35,7 +35,6 @@ class CNN:
         # to work with. This is standard practice.
         # Forward pass through each layer
         out = image / 255  # Normalize input
-        out = out - 0.5
         n = 0
         for layer in self.layers[:-1]:  # Exclude last layer (SoftMaxCrossEntropy)
             if isinstance(layer, Conv2d):
@@ -47,7 +46,7 @@ class CNN:
                 self.before_flat = out.shape
             n+=1
         y_hat, loss = self.layers[-1].forward(out, label)  # Last layer, softmax
-        print(np.argmax(y_hat))
+        # print(np.argmax(y_hat))
         return y_hat, loss 
 
     
@@ -109,7 +108,7 @@ class CNN:
         train_loss_list = []
         test_loss_list = []
         for e in range (n_epochs):
-            print('--- Epoch %d ---' % (e + 1))
+            print('--- Epoch %d ---' % (e))
             # X_s, y_s = shuffle(X_tr, y_tr, e)
             index = np.random.choice(len(X_tr)) 
             X_s, y_s = X_tr[index], y_tr[index]
@@ -121,13 +120,13 @@ class CNN:
                 # y_hat, loss = self.forward(X_s[i], y_s[i])
                 # self.backprop(y_s[i], y_hat)
                 # self.step()
-
-            train_loss = self.compute_loss(X_tr, y_tr)
-            print("train loss: ", train_loss)
-            train_loss_list.append(train_loss)
-            test_loss = self.compute_loss(X_test, y_test)
-            print("test loss: ", test_loss)
-            test_loss_list.append(test_loss)
+            if e % 5 == 0:
+                train_loss = self.compute_loss(X_tr, y_tr)
+                print("train loss: ", train_loss)
+                train_loss_list.append(train_loss)
+                test_loss = self.compute_loss(X_test, y_test)
+                print("test loss: ", test_loss)
+                test_loss_list.append(test_loss)
         return train_loss_list, test_loss_list
     
 

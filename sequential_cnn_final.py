@@ -16,7 +16,18 @@ def main(args):
   test_idx = np.random.choice(len(mnist.test_images()), image_num)
   test_images = mnist.test_images()[test_idx]
   test_labels = mnist.test_labels()[test_idx]
+
+    train_0s = np.where(mnist.train_labels() == 0)[0]
+    test_0s = np.where(mnist.test_labels() == 0)[0]
+    train_1s = np.where(mnist.train_labels() == 1)[0]
+    test_1s = np.where(mnist.test_labels() == 1)[0]
+    train_idxs = np.empty(image_num)
+    train_idxs[:image_num // 2] = mnist.random.choise(train_0s, image_num // 2)
+    train_idxs[image_num//2:] = mnist.random.choise(train_1s, image_num - image_num // 2)
   
+  
+
+
   labels = ['0','1', '2', '3', '4', '5', '6', '7', '8', '9']
     
   cnn = CNN(
