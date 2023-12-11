@@ -29,9 +29,13 @@ class Parallel_Linear:
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         # Insert bias term
-        x = np.insert(x, 0, 1)
+        print(x.shape)
+        bias = np.ones((x.shape[0], 1))
+        print(x.shape)
+        x = np.hstack((x, bias))
+        print(x.shape)
         self.input = x
-        
+        print(self.local_w.T.shape)
         # Perform the local part of the forward pass
         local_y = np.dot(x, self.local_w.T)
         
@@ -43,6 +47,7 @@ class Parallel_Linear:
         self.comm.Gather(local_y, gathered_y, root=0)
         
         # Only the root process will have the complete output
+        print("gathered_y's shape: " + str(gathered_y.shape))
         return gathered_y
 
     def backward(self, dz: np.ndarray) -> np.ndarray:

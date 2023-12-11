@@ -30,17 +30,19 @@ class ParallelCNN:
 
     def forward(self, image, label, epoch):
         recvbuf = data_parallel_forward(image, comm, self)
-        out = recvbuf
+        out = recvbuf.reshape((1, -1))
         print(out.shape) #(20000,)
         for layer in self.dense_layers:
             out = layer.forward(out)
+            print(out.shape)
 
         # Gather outputs at root for softmax and loss
         gathered_output = None
         if rank == 0:
             gathered_output = np.empty([size, *out.shape], dtype=out.dtype)
-        
         comm.Gather(out, gathered_output, root=0)
+        print(out.shape)
+        print(gathered_output.shape)
 
         # Compute loss and softmax only on the root
         if rank == 0:
