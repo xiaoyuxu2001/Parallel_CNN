@@ -101,18 +101,22 @@ class Conv2d:
         """
         Performs a backward pass of the conv layer.
         """
-        d_L_d_filters = np.zeros(self.filters.shape)
-        d_L_d_bias = np.zeros(self.bias.shape)
+        batch, n_rows, n_cols = self.last_input.shape
+        d_L_d_filters = np.zeros((batch ,*self.filters.shape))
+        d_L_d_bias = np.zeros((batch,*self.bias.shape))
         kernel_height, kernel_width = self.kernel_size
-        n_rows, n_cols = self.last_input.shape
-
         for i in range(n_rows - kernel_height + 1):
             for j in range(n_cols - kernel_width + 1):
                 for f in range(self.num_filters):
-                    region = self.last_input[i:i+kernel_height, j:j+kernel_width]
-                    d_L_d_filters[:, :, f] += d_L_d_out[i, j, f] * region
-                    d_L_d_bias[f] += d_L_d_out[i, j, f]
+                    region = self.last_input[:, i:i+kernel_height, j:j+kernel_width]
+                    d_L_d_filters[f, :, :] += d_L_d_out[:, i, j, f] * region
+                    d_L_d_bias[f, :] += d_L_d_out[:, i, j, f]
         
+        # get the average of the gradients
+        d_L_d_filters_avg = np.mean(d_L_d_filters, axis=0)
+        d_L_d_bias_avg = np.mean(d_L_d_bias, axis=0)
         
-        self.filters -= self.learning_rate * d_L_d_filters
-        self.bias -= self.learning_rate * d_L_d_bias
+        # Update weights and biases
+        self.filters -= self.learning_rate * d_L_d_filters_avg
+        self.bias -= self.learning_rate * d_L_d_bias_avg
+
