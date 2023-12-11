@@ -173,37 +173,41 @@ class Linear:
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """
-        :param x: Input to linear layer with shape (input_size,)
+        :param x: Input to linear layer with shape (batch_num, input_size)
                   where input_size *does not include* the folded bias.
                   In other words, the input does not contain the bias column 
                   and you will need to add it in yourself in this method.
                   Since we train on 1 example at a time, batch_size should be 1
                   at training.
-        :return: output z of linear layer with shape (output_size,)
+        :return: output z of linear layer with shape (output_size, batch_num)
         """
-        x = np.insert(x, 0, 1)
+        # Insert bias term
+        x = np.insert(x, 0, 1, axis=1)
         self.input = x
-        return np.dot(self.w, x)
+        return np.dot(self.w, x.transpose())
+    
+       
+       
 
     def backprop(self, dz: np.ndarray) -> np.ndarray:
         """
-        :param dz: partial derivative of loss with respect to output z
-            of linear
-        :return: dx, partial derivative of loss with respect to input x
-            of linear
-        
-        Note that this function should set self.dw
-            (gradient of weights with respect to loss)
-            but not directly modify self.w; NN.step() is responsible for
-            updating the weights.
+        :param dz: partial derivative of loss with respect to output z of linear
+                shape: (batch_size, num_outputs)
+        :return: dx, partial derivative of loss with respect to input x of linear
+                shape: (batch_size, num_inputs)
 
-        HINT: You may want to use some of the values you previously cached in 
-        your forward() method.
+        Note that this function should set self.dw (gradient of weights with respect to loss)
+        but not directly modify self.w; NN.step() is responsible for updating the weights.
         """
-        a : int = len(dz)
-        c : int = len(self.input)
-        self.dw = np.dot(dz.reshape(a,1), (self.input.transpose()).reshape(1,c))
-        return self.w[:, 1:].transpose() @ dz
+
+        # Assuming self.input shape: (batch_size, num_inputs)
+        # Compute gradient w.r.t. weights (self.dw)
+        self.dw = np.dot(dz.T, self.input) / dz.shape[0]  # Averaging over the batch
+
+        # Compute gradient w.r.t. inputs (dx)
+        dx = np.dot(dz, self.w[:, 1:].T)
+
+        return dx
         
     def step(self) -> None:
         """
