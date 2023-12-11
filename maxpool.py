@@ -30,16 +30,16 @@ class MaxPool2:
         '''
         # print("forwarding: maxpool")
         self.last_input = input
-        width, height, n_channels = input.shape
+        batch, width, height, n_channels = input.shape
         pooled_height = height - 1  # since 2x2 pooling, reduce dimension by 1
         pooled_width = width - 1
 
-        pooled_array = np.zeros((pooled_width, pooled_height, n_channels))
+        pooled_array = np.zeros((batch, pooled_width, pooled_height, n_channels))
         for channel in range(n_channels):
             for i in range(pooled_height):
                 for j in range(pooled_width):
-                    window = input[i:i+2, j:j+2, channel]
-                    pooled_array[i, j, channel] = np.max(window)
+                    window = input[:, i:i+2, j:j+2, channel]
+                    pooled_array[:, i, j, channel] = np.max(window, axis=(1, 2))
 
         return pooled_array
 

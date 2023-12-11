@@ -24,7 +24,7 @@ class CNN:
         ]
         print('MNIST CNN initialized!')
     
-    def forward(self, image, label, epoch):
+    def forward(self, image, label):
         '''
         Completes a forward pass of the CNN and calculates the loss and prediction
         - image is a 2d numpy array
@@ -37,16 +37,12 @@ class CNN:
         out = image / 255  # Normalize input
         n = 0
         for layer in self.layers[:-1]:  # Exclude last layer (SoftMaxCrossEntropy)
-            if isinstance(layer, Conv2d):
-                out = layer.forward(out, epoch)
-            else:
-                out = layer.forward(out)
+            out = layer.forward(out)
             if isinstance(layer, MaxPool2):
                 logging.debug("after pool", out.shape)
                 self.before_flat = out.shape
             n+=1
         y_hat, loss = self.layers[-1].forward(out, label)  # Last layer, softmax
-        print(y_hat)
         return y_hat, loss 
 
     

@@ -1,10 +1,43 @@
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
 from mpi4py import MPI
-from sequential_cnn_final import CNN
+from conv import Conv2d
+from maxpool import MaxPool2
+from dense import  Relu, Flatten
+import numpy as np
+import logging
 
-
+class Parallel_Convolution:
+    def ___init__(self, learning_rate):
+        self.comm = MPI.COMM_WORLD
+        self.rank = self.comm.Get_rank()
+        self.size = self.comm.Get_size()
+        
+        self.layers = [
+            Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate),
+            Relu(),
+            MaxPool2(),
+            Flatten(),
+        ]
+    
+    def forward(self, image, epoch):
+        '''
+        Returns:
+        array: a list of data subsets corresponding to the workload of each worker
+        '''
+        
+        # We transform the image from [0, 255] to [-0.5, 0.5] to make it easier
+        # to work with. This is standard practice.
+        # Forward pass through each layer
+        out = image / 255  # Normalize input
+        for layer in self.layers:  # Exclude last layer (SoftMaxCrossEntropy)
+            if isinstance(layer, Conv2d):
+                out = layer.forward(out, epoch)
+            else:
+                out = layer.forward(out)
+            if isinstance(layer, MaxPool2):
+                logging.debug("after pool", out.shape)
+                self.before_flat = out.shape
+        return out
 
 # warning: can only handle first 3x3 then 2x2 pooling with stride 1
 def divide_data(data, num_workers) -> np.ndarray:
@@ -113,6 +146,9 @@ def ring_all_reduce(all_data, comm, op):
         collection[pos] = recv.copy()
     
     return collection
+
+
+
 
 
 

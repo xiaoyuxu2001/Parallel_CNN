@@ -82,5 +82,7 @@ if __name__ == '__main__':
   #                     help='weight initialization functions, 1: random')
   parser.add_argument('--learning_rate', type=float, default=0.05,
                       help='learning rate')
+  parser.add_argument('--batch_num', type=int, default=128,
+                      help='batch_num')
   args = parser.parse_args()
   main(args)
