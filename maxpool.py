@@ -51,15 +51,15 @@ class MaxPool2:
         '''
         d_L_d_input = np.zeros(self.last_input.shape)
 
-        for im_region, i, j in self.iterate_regions(self.last_input):
-            h, w, f = im_region.shape
-            amax = np.max(im_region, axis=(0,1))
-
-            for i2 in range(h):
-                for j2 in range(w):
-                    for f2 in range(f):
-                        # If this pixel was the max value, copy the gradient to it.
-                        if im_region[i2, j2, f2] == amax[f2]:
-                            d_L_d_input[i + i2, j+ j2, f2] += d_L_d_out[i, j, f2]
+        for batch_num in range(len(self.last_input)):
+            for channel in range(len(self.last_input[0, 0, 0])):
+                for i, j in self.iterate_regions(self.last_input[batch_num, :, :, channel]):
+                    h, w = i.shape
+                    amax = np.max(i)
+                    for r in range(h):
+                        for c in range(w):
+                            # If this pixel was the max value, copy the gradient to it.
+                            if i[r, c] == amax:
+                                d_L_d_input[batch_num, r * self.stride + i, c * self.stride + j, channel] = d_L_d_out[batch_num, i, j, channel]
 
         return d_L_d_input
