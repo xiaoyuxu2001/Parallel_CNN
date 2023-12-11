@@ -4,8 +4,9 @@ from dense import  Relu, Flatten, Dense, random_init, SoftMaxCrossEntropy, shuff
 import numpy as np
 from typing import Callable, List, Tuple
 import logging
-from data_parallel import data_parallel_forward
+import data_parallel_c
 from model_parallel import Parallel_Linear
+from mpi4py import MPI
 
 from mpi4py import MPI
 import numpy as np
@@ -18,10 +19,7 @@ class ParallelCNN:
     def __init__(self, learning_rate):
         self.learning_rate = learning_rate
         # Initialize parallel layers
-        self.conv_layers = [Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate),
-                            Relu(),
-                            MaxPool2(),
-                            Flatten()]
+        self.conv_layers = data_parallel_c.Parallel_Convolution(learning_rate)
         self.dense_layers = [Parallel_Linear(20000, 128, random_init, learning_rate),
                         #   Relu(), 
                           Parallel_Linear(128, 2, random_init, learning_rate)]
@@ -92,30 +90,51 @@ class ParallelCNN:
 
     def train(self, X_tr: np.ndarray, y_tr: np.ndarray,
               X_test: np.ndarray, y_test: np.ndarray,
-              n_epochs: int) -> Tuple[List[float], List[float]]:
+              n_epochs: int, batch_num: int) -> Tuple[List[float], List[float]]:
         train_loss_list = []
         test_loss_list = []
+        # init the mpi
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+        assert(size == 4)
+
         for e in range (n_epochs):
             print('--- Epoch %d ---' % (e))
-            # X_s, y_s = shuffle(X_tr, y_tr, e)
-            index = np.random.choice(len(X_tr)) 
+            index = np.random.choice(len(X_tr), batch_num, replace=False) 
             X_s, y_s = X_tr[index], y_tr[index]
-            y_hat, loss = self.forward(X_s, y_s, e)
-            if self.backprop(y_s, y_hat):
-                break
-            self.step()
 
-            # for i, (im, label) in enumerate(zip(X_s, y_s)):
-                # y_hat, loss = self.forward(X_s[i], y_s[i])
-                # self.backprop(y_s[i], y_hat)
-                # self.step()
-            if e % 500 == 0 and e!= 0:
-                train_loss = self.compute_loss(X_tr, y_tr)
-                print("train loss: ", train_loss)
-                train_loss_list.append(train_loss)
-                # test_loss = self.compute_loss(X_test, y_test)
-                # print("test loss: ", test_loss)
-                # test_loss_list.append(test_loss)
+            # divide the data
+            split_x = data_parallel_c.divide_data(X_s, 4)
+            split_y = data_parallel_c.divide_data(y_s, 4)
+            # spread the data across the processes
+            batch_split_x = comm.scatter(split_x, root=0)
+            batch_split_y = comm.scatter(split_y, root=0)
+
+            # apply the forward pass on each process only on convolutional layers
+            partial_conv = self.conv_layers.forward(batch_split_x)
+            
+            # there are 4 rounds in total, in each round, do forward and backward at the same time
+            cur_round = 0
+            while cur_round < 4:
+                # assume 4 workers!!
+                
+                
+                data_stored = data_parallel_c.gather_batch(partial_conv, cur_round, comm)
+
+
+                # continue the forward pass using model parallelism
+                # model.forward
+                # 
+
+
+
+
+
+
+
+
+
         return train_loss_list, test_loss_list
     
 
@@ -129,3 +148,6 @@ class ParallelCNN:
             if y_predict != y[i]:
                 error += 1
         return y_predict_list, error / len(X)
+    
+
+

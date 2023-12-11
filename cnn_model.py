@@ -11,12 +11,12 @@ class CNN:
         # Initialize layers
         self.layers = [
             Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate),
-            # Relu(),
-            # MaxPool2(),
+            Relu(),
+            MaxPool2(),
             Flatten(),
-            Linear(21632, 128, random_init, learning_rate),
-            # Relu(),
-            Linear(128, 10, random_init, learning_rate),
+            Linear(20000, 128, random_init, learning_rate),
+            Relu(),
+            Linear(128, 2, random_init, learning_rate),
             SoftMaxCrossEntropy()
         ]
         print('MNIST CNN initialized!')
