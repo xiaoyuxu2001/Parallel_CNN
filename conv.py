@@ -22,20 +22,21 @@ class Conv2d:
 
     def conv2d(self, input):
         """
-        Apply a 2D convolution operation to the input array.
+        Apply a 2D convolution operation to the input array, which is a batch of images.
         """
         kernel_height, kernel_width = self.kernel_size
         n_filters = self.filters.shape[-1]
-        n_rows, n_cols = input.shape
+        batch_num, n_rows, n_cols = input.shape
         out_height = n_rows - kernel_height + 1
         out_width = n_cols - kernel_width + 1
 
-        output = np.zeros((out_height, out_width, n_filters))
+        output = np.zeros((batch_num, out_height, out_width, n_filters))
 
         for i in range(out_height):
             for j in range(out_width):
-                for k in range(n_filters):
-                    output[i, j, k] = np.sum(np.multiply(input[i:i+kernel_height, j:j+kernel_width], self.filters[:, :, k])) + self.bias[k]
+                for f in range(n_filters):
+                    region = input[:, i:i+kernel_height, j:j+kernel_width]
+                    output[:, i, j, f] = np.sum(region * self.filters[:, :, f], axis=(1, 2)) + self.bias[f]
 
 
         return output
@@ -64,7 +65,7 @@ class Conv2d:
 
         return output.get()
 
-    def forward(self, input, epoch):
+    def forward(self, input):
         """
         Performs a forward pass of the conv layer using the given input.
         """
