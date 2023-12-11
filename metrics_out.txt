@@ -1,2 +1,2 @@
-error(train): 0.012
-error(test): 0.004
+error(train): 0.523
+error(test): 0.519

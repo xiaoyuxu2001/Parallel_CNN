@@ -63,14 +63,24 @@ def shuffle(X: np.ndarray, y: np.ndarray,
     return X[ordering], y[ordering]
 
 class Flatten:
+    def __init__(self):
+        self.input_shape = None
+
     def forward(self, input):
         # input is a batch so flatten each image in the batch
+        self.input_shape = input.shape
+        flattened = np.empty((input.shape[0], np.prod(input.shape[1:])))
         for i in range(len(input)):
-            input[i] = flatten(input[i])
+            flattened[i] = flatten(input[i])
+        return flattened
 
-    def backprop(self, d_L_d_out, input_shape):
+    def backprop(self, d_L_d_out):
         # input_shape is the shape before we flattened it
-        return d_L_d_out.reshape(input_shape)
+        input_shape = self.input_shape
+        ret = np.empty(input_shape)
+        for i in range(len(d_L_d_out)):
+            ret[i] = np.reshape(d_L_d_out[i], input_shape[1:])
+        return ret
 
 class Dense:
     def __init__(self, input_len, nodes):
@@ -103,10 +113,6 @@ class Relu:
         """
         self.last_input = input
         return np.maximum(0, input)
-        
-      
-    def d_relu(self, x):
-          return 1 if x > 0 else 0
 
     def backprop(self, d_L_d_out):
         """
@@ -132,12 +138,12 @@ class SoftMaxCrossEntropy:
     def _softmax_batch(self, z: np.ndarray) -> np.ndarray:
         """
         Implement softmax function.
-        :param z: input logits of shape (num_classes,)
+        :param z: input logits of shape (num_batch, num_classes)
         :return: softmax output of shape (num_classes,)
         """
 
         sum_exp = np.sum(np.exp(z), axis=1)
-        return np.exp(z) / sum_exp[:, np.newaxis]
+        return np.divide(np.exp(z), np.array([sum_exp]).T)
 
     def _cross_entropy(self, y: int, y_hat: np.ndarray) -> float:
         """
@@ -162,8 +168,9 @@ class SoftMaxCrossEntropy:
         :param y_hat: prediction with shape (num_classes,)
         :return: cross entropy loss
         """
-
-        loss = -np.log(y_hat[np.arange(len(y_hat)), y])
+        one_hot_y = np.zeros_like(y_hat)
+        one_hot_y[np.arange(len(y_hat)), y] = 1
+        loss = -np.sum(np.multiply(np.log(y_hat), one_hot_y), axis = 1)
         
         return loss
 
@@ -176,7 +183,6 @@ class SoftMaxCrossEntropy:
             y: predictions from softmax as an np.ndarrayt
             loss: cross entropy loss
         """
-        # TODO: Call your implementations of _softmax and _cross_entropy here
         y_hat = self._softmax(z)
         cross_entropy = self._cross_entropy(y, y_hat)
         return y_hat, cross_entropy
@@ -184,13 +190,12 @@ class SoftMaxCrossEntropy:
     def forward_batch(self, z: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, float]:
         """
         Compute softmax and cross entropy loss.
-        :param z: input logits of shape (num_classes,)
+        :param z: input logits of shape (num_batch, num_classes)
         :param y: integer class label
         :return:
             y: predictions from softmax as an np.ndarrayt
-            loss: cross entropy loss
-        """
-            
+            loss: cross entropy loss, arrray of shape (num_batch,)
+        """    
         y_hat_batch = self._softmax_batch(z)
         cross_entropy_batch = self._cross_entropy_batch(y, y_hat_batch)
         return y_hat_batch, cross_entropy_batch
@@ -210,6 +215,7 @@ class SoftMaxCrossEntropy:
         """
         # TODO: implement using the formula you derived in the written
         res = y_hat.copy()
+        print("y_hat: ", y_hat, y)
         res[y] -= 1
         return res
     
@@ -228,5 +234,6 @@ class SoftMaxCrossEntropy:
         """
 
         res = y_hat.copy()
-        res[np.arange(len(y_hat)), y] -= 1
+        for i in range(len(y_hat)):
+            res[i][y[i]] -= 1
         return res

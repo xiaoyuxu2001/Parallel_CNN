@@ -1,7 +1,7 @@
 import numpy as np
-from pycuda.compiler import DynamicSourceModule
-import pycuda.driver as cuda
-import pycuda.gpuarray as gpuarray
+# from pycuda.compiler import DynamicSourceModule
+# import pycuda.driver as cuda
+# import pycuda.gpuarray as gpuarray
 
 class Conv2d:
     """
@@ -15,9 +15,9 @@ class Conv2d:
         kernel_height, kernel_width = kernel_size
         self.filters = np.random.randn(kernel_height, kernel_width, num_filters) 
         self.bias = np.random.randn(num_filters)
-        self.h = np.zeros(self.filters.shape)
-        self.hb = np.zeros(self.bias.shape)
-        self.rmsprop_rate = 0.85
+        # self.h = np.zeros(self.filters.shape)
+        # self.hb = np.zeros(self.bias.shape)
+        # self.rmsprop_rate = 0.85
         # print("self.filters: ", self.filters)
 
     def conv2d(self, input):
@@ -37,7 +37,6 @@ class Conv2d:
                 for f in range(n_filters):
                     region = input[:, i:i+kernel_height, j:j+kernel_width]
                     output[:, i, j, f] = np.sum(region * self.filters[:, :, f], axis=(1, 2)) + self.bias[f]
-
 
         return output
     
@@ -108,9 +107,10 @@ class Conv2d:
         for i in range(n_rows - kernel_height + 1):
             for j in range(n_cols - kernel_width + 1):
                 for f in range(self.num_filters):
-                    region = self.last_input[:, i:i+kernel_height, j:j+kernel_width]
-                    d_L_d_filters[f, :, :] += d_L_d_out[:, i, j, f] * region
-                    d_L_d_bias[f, :] += d_L_d_out[:, i, j, f]
+                    for b in range(self.last_input.shape[0]):
+                        region = self.last_input[b, i:i+kernel_height, j:j+kernel_width]
+                        d_L_d_filters[b, :, :, f] += region * d_L_d_out[b, i, j, f]
+                        d_L_d_bias[b, f] += d_L_d_out[b, i, j, f]
         
         # get the average of the gradients
         d_L_d_filters_avg = np.mean(d_L_d_filters, axis=0)

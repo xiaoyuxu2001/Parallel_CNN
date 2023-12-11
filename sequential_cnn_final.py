@@ -9,17 +9,24 @@ def main(args):
     # Feel free to change this if you want.
   image_num = args.num_image
   
-
-  train_0s = np.where(mnist.train_labels() == 0)[0] 
-  test_0s = np.where(mnist.test_labels() == 0)[0]
-  train_1s = np.where(mnist.train_labels() == 1)[0]
-  test_1s = np.where(mnist.test_labels() == 1)[0]
   train_idxs = np.empty(image_num, dtype=int)
-  train_idxs[:image_num // 2] = np.random.choice(train_0s, image_num // 2)
-  train_idxs[image_num//2:] = np.random.choice(train_1s, image_num - image_num // 2)
   test_idxs = np.empty(image_num, dtype=int)
-  test_idxs[:image_num // 2] = np.random.choice(test_0s, image_num // 2)
-  test_idxs[image_num//2:] = np.random.choice(test_1s, image_num - image_num // 2)
+  for i in range(10):
+    train_0s = np.where(mnist.train_labels() == i)[0] 
+    test_0s = np.where(mnist.test_labels() == i)[0]
+    train_idxs[image_num * i // 10:image_num * (i+1) // 10] = np.random.choice(train_0s, image_num // 10)
+    test_idxs[image_num * i // 10:image_num * (i+1) // 10] = np.random.choice(test_0s, image_num // 10)
+
+  # train_0s = np.where(mnist.train_labels() == 0)[0] 
+  # test_0s = np.where(mnist.test_labels() == 0)[0]
+  # train_1s = np.where(mnist.train_labels() == 1)[0]
+  # test_1s = np.where(mnist.test_labels() == 1)[0]
+  # train_idxs = np.empty(image_num, dtype=int)
+  # train_idxs[:image_num // 2] = np.random.choice(train_0s, image_num // 2)
+  # train_idxs[image_num//2:] = np.random.choice(train_1s, image_num - image_num // 2)
+  # test_idxs = np.empty(image_num, dtype=int)
+  # test_idxs[:image_num // 2] = np.random.choice(test_0s, image_num // 2)
+  # test_idxs[image_num//2:] = np.random.choice(test_1s, image_num - image_num // 2)
 
   
   
@@ -39,7 +46,7 @@ def main(args):
   )
 #   calculate time for training
   start_time = time.time()
-  train_losses, test_losses = cnn.train(train_images, train_labels, test_images, test_labels, n_epochs=args.num_epoch)
+  train_losses, test_losses = cnn.train(train_images, train_labels, test_images, test_labels, n_epochs=args.num_epoch, batch_num=args.batch_num)
   end_time = time.time()
 #   print("filter after training: ", cnn.layers[0].filters)
   print("Time for training: ", format(end_time - start_time, '.2f'), "s")
