@@ -128,6 +128,16 @@ class SoftMaxCrossEntropy:
         # TODO: implement
         sum_exp = np.sum(np.exp(z))
         return np.exp(z) / sum_exp
+    
+    def _softmax_batch(self, z: np.ndarray) -> np.ndarray:
+        """
+        Implement softmax function.
+        :param z: input logits of shape (num_classes,)
+        :return: softmax output of shape (num_classes,)
+        """
+
+        sum_exp = np.sum(np.exp(z), axis=1)
+        return np.exp(z) / sum_exp[:, np.newaxis]
 
     def _cross_entropy(self, y: int, y_hat: np.ndarray) -> float:
         """
@@ -144,6 +154,18 @@ class SoftMaxCrossEntropy:
         loss = -np.log(y_hat[y])
         
         return loss
+    
+    def _cross_entropy_batch(self, y: np.ndarray, y_hat: np.ndarray) -> float:
+        """
+        Compute cross entropy loss.
+        :param y: integer class label
+        :param y_hat: prediction with shape (num_classes,)
+        :return: cross entropy loss
+        """
+
+        loss = -np.log(y_hat[np.arange(len(y_hat)), y])
+        
+        return loss
 
     def forward(self, z: np.ndarray, y: int) -> Tuple[np.ndarray, float]:
         """
@@ -158,6 +180,20 @@ class SoftMaxCrossEntropy:
         y_hat = self._softmax(z)
         cross_entropy = self._cross_entropy(y, y_hat)
         return y_hat, cross_entropy
+    
+    def forward_batch(self, z: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, float]:
+        """
+        Compute softmax and cross entropy loss.
+        :param z: input logits of shape (num_classes,)
+        :param y: integer class label
+        :return:
+            y: predictions from softmax as an np.ndarrayt
+            loss: cross entropy loss
+        """
+            
+        y_hat_batch = self._softmax_batch(z)
+        cross_entropy_batch = self._cross_entropy_batch(y, y_hat_batch)
+        return y_hat_batch, cross_entropy_batch
 
     def backprop(self, y: int, y_hat: np.ndarray) -> np.ndarray:
         """
@@ -175,4 +211,22 @@ class SoftMaxCrossEntropy:
         # TODO: implement using the formula you derived in the written
         res = y_hat.copy()
         res[y] -= 1
+        return res
+    
+    def backprop_batch(self, y: np.ndarray, y_hat: np.ndarray) -> np.ndarray:
+        """
+        Compute gradient of loss w.r.t. ** softmax input **.
+        Note that here instead of calculating the gradient w.r.t. the softmax
+        output, we are directly computing gradient w.r.t. the softmax input.
+
+        Try deriving the gradient yourself (Question 2.2(b) on the study guide),
+        and you'll see why we want to calculate this in a single step.
+
+        :param y: integer class label
+        :param y_hat: predicted softmax probability with shape (num_classes,)
+        :return: gradient with shape (num_classes,)
+        """
+
+        res = y_hat.copy()
+        res[np.arange(len(y_hat)), y] -= 1
         return res
