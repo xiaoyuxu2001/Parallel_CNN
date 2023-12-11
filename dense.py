@@ -96,17 +96,18 @@ class Dense:
 class Relu:
     def forward(self, input):
         """
-        Performs a forward pass of the ReLU activation on the input.
+        Performs a forward pass of the ReLU activation on the input where input is a batch
         """
         self.last_input = input
         return np.maximum(0, input)
+        
       
     def d_relu(self, x):
           return 1 if x > 0 else 0
 
     def backprop(self, d_L_d_out):
         """
-        Performs a backward pass of the ReLU activation.
+        Performs a backward pass of the ReLU activation, where input is a batch.
         """
         d_L_d_input = d_L_d_out.copy()
         d_L_d_input = np.where(d_L_d_input > 0, d_L_d_input, 0)
