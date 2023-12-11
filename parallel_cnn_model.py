@@ -23,7 +23,7 @@ class ParallelCNN:
                             MaxPool2(),
                             Flatten()]
         self.dense_layers = [Parallel_Linear(20000, 128, random_init, learning_rate),
-                          # Relu(), 
+                        #   Relu(), 
                           Parallel_Linear(128, 2, random_init, learning_rate)]
         self.softmax = SoftMaxCrossEntropy()
         print('Parallel MNIST CNN initialized!')
@@ -31,6 +31,7 @@ class ParallelCNN:
     def forward(self, image, label, epoch):
         recvbuf = data_parallel_forward(image, comm, self)
         out = recvbuf
+        print(out.shape) #(20000,)
         for layer in self.dense_layers:
             out = layer.forward(out)
 
@@ -86,3 +87,43 @@ class ParallelCNN:
                 layer.step()
         
         # Synchronize the weights of the model parallel layers?
+
+    def train(self, X_tr: np.ndarray, y_tr: np.ndarray,
+              X_test: np.ndarray, y_test: np.ndarray,
+              n_epochs: int) -> Tuple[List[float], List[float]]:
+        train_loss_list = []
+        test_loss_list = []
+        for e in range (n_epochs):
+            print('--- Epoch %d ---' % (e))
+            # X_s, y_s = shuffle(X_tr, y_tr, e)
+            index = np.random.choice(len(X_tr)) 
+            X_s, y_s = X_tr[index], y_tr[index]
+            y_hat, loss = self.forward(X_s, y_s, e)
+            if self.backprop(y_s, y_hat):
+                break
+            self.step()
+
+            # for i, (im, label) in enumerate(zip(X_s, y_s)):
+                # y_hat, loss = self.forward(X_s[i], y_s[i])
+                # self.backprop(y_s[i], y_hat)
+                # self.step()
+            if e % 500 == 0 and e!= 0:
+                train_loss = self.compute_loss(X_tr, y_tr)
+                print("train loss: ", train_loss)
+                train_loss_list.append(train_loss)
+                # test_loss = self.compute_loss(X_test, y_test)
+                # print("test loss: ", test_loss)
+                # test_loss_list.append(test_loss)
+        return train_loss_list, test_loss_list
+    
+
+    def test(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, float]:
+        y_predict_list = np.zeros(len(X))
+        error = 0
+        for i in range(len(X)):
+            y_hat, loss = self.forward(X[i], y[i], 0)
+            y_predict = np.argmax(y_hat)
+            y_predict_list[i] = y_predict
+            if y_predict != y[i]:
+                error += 1
+        return y_predict_list, error / len(X)

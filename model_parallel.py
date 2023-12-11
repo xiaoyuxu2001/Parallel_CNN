@@ -29,7 +29,7 @@ class Parallel_Linear:
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         # Insert bias term
-        x = np.insert(x, 0, 1, axis=1)
+        x = np.insert(x, 0, 1)
         self.input = x
         
         # Perform the local part of the forward pass
