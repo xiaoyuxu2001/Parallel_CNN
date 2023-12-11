@@ -64,9 +64,12 @@ def shuffle(X: np.ndarray, y: np.ndarray,
 
 class Flatten:
     def forward(self, input):
-        return input.flatten()
+        # input is a batch so flatten each image in the batch
+        for i in range(len(input)):
+            input[i] = flatten(input[i])
 
     def backprop(self, d_L_d_out, input_shape):
+        # input_shape is the shape before we flattened it
         return d_L_d_out.reshape(input_shape)
 
 class Dense:
