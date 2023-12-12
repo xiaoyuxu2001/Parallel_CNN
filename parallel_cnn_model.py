@@ -57,27 +57,19 @@ class ParallelCNN:
         self.comm.Allgatherv([out_split, MPI.DOUBLE], [recvbuf, (recv_size, displacements), MPI.DOUBLE])
 
         #---------------------------perform the forward pass on the dense layers---------------------------
-        out = recvbuf.reshape((self.batch_num, 20000))
-        # print("out shape: ", out.shape)
-        i = 0
+        out = recvbuf.reshape((1, -1))
+        print(out.shape) #(20000,)
         for layer in self.dense_layers:
             out = layer.forward(out)
-            # only the root process has the complete output
-            if i == 0 and self.rank != 0:
-                # scatter the data to each process
-                out = np.empty(self.batch_num * 128, dtype=np.float64)
-                i += 1
-            elif i == 1:
-                break
-            self.comm.Bcast(out, root=0)
-            print("out shape: ", out.shape)
-            out = out.reshape((self.batch_num, 128))
+            print(out.shape)
 
-
-
-
-        gathered_output = out
-
+        # Gather outputs at root for softmax and loss
+        gathered_output = None
+        if rank == 0:
+            gathered_output = np.empty([size, *out_split.shape], dtype=out_split.dtype)
+        comm.Gather(out_split, gathered_output, root=0)
+        print(out_split.shape)
+        print(gathered_output.shape)
 
         # Compute loss and softmax only on the root
         if self.rank == 0:
