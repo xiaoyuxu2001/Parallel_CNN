@@ -141,9 +141,14 @@ class SoftMaxCrossEntropy:
         :param z: input logits of shape (num_batch, num_classes)
         :return: softmax output of shape (num_classes,)
         """
+        # Normalize by subtracting the max logit for numerical stability
+        z_max = np.max(z, axis=1, keepdims=True)
+        z = z - z_max
 
-        sum_exp = np.sum(np.exp(z), axis=1)
-        return np.divide(np.exp(z), np.array([sum_exp]).T)
+        sum_exp = np.sum(np.exp(z), axis=1, keepdims=True)
+        softmax_output = np.divide(np.exp(z), sum_exp)
+        print("softmax_output here", softmax_output)
+        return softmax_output
 
     def _cross_entropy(self, y: int, y_hat: np.ndarray) -> float:
         """
@@ -168,12 +173,15 @@ class SoftMaxCrossEntropy:
         :param y_hat: prediction with shape (num_classes,)
         :return: cross entropy loss
         """
+        epsilon = 1e-300  # Small constant for numerical stability
         one_hot_y = np.zeros_like(y_hat)
         one_hot_y[np.arange(len(y_hat)), y] = 1
-        loss = -np.sum(np.multiply(np.log(y_hat), one_hot_y), axis = 1)
-        
-        return loss
+        log_y_hat = np.log(y_hat + epsilon)
+        # print("y_hat here", y_hat)
+        loss = -np.sum(np.multiply(log_y_hat, one_hot_y), axis = 1)
 
+        return loss
+    
     def forward(self, z: np.ndarray, y: int) -> Tuple[np.ndarray, float]:
         """
         Compute softmax and cross entropy loss.
