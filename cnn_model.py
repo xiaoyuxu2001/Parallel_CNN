@@ -149,5 +149,6 @@ class Linear:
         self.w = self.w - self.lr * self.dw
         # Compute gradient w.r.t. inputs (dx)
         dx = np.dot(dz, self.w[:, 1:])
+        print(dz.shape, self.w.shape, self.dw.shape, dx.shape)
 
         return dx

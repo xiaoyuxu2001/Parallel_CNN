@@ -28,10 +28,50 @@ class Parallel_Linear:
         self.input = None
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-
+        # Insert bias term
+        print(x.shape)
+        bias = np.ones((x.shape[0], 1))
+        print(x.shape)
+        x = np.hstack((x, bias))
+        print(x.shape)
+        self.input = x
+        print(self.local_w.T.shape)
+        # Perform the local part of the forward pass
+        local_y = np.dot(x, self.local_w.T)
+        
+        # Gather the outputs from all workers to form the full output
+        gathered_y = None
+        print("local: ", self.local_w.shape[0] * self.size)
+        if self.rank == 0:
+            gathered_y = np.empty((x.shape[0], self.local_w.shape[0] * self.size), dtype=np.float64)
+        
+        self.comm.Gather(local_y, gathered_y, root=0)
+        
+        # Only the root process will have the complete output
+        if self.rank == 0:
+            print("gathered_y's shape: " + str(gathered_y.shape))
+        return gathered_y
 
     def backward(self, dz: np.ndarray) -> np.ndarray:
-
+        # Scatter the gradient among all workers
+        local_dz = np.empty((dz.shape[0], self.local_w.shape[0]), dtype=np.float64)
+        self.comm.Scatter(dz, local_dz, root=0)
+        
+        # Compute local gradients for weights
+        self.local_dw = np.dot(local_dz.T, self.input).reshape(1, -1)
+    
+        # if self.rank == 0:
+        #     global_dw = np.empty((self.size, 129))
+        # else:
+        #     global_dw = None
+        # print("ppakwoj")
+        # # Gather all local gradients to the root process
+        # self.comm.Gather(self.local_dw, global_dw, root=0)
+        
+        
+        # Compute gradient for input
+        grad_input = np.dot(dz, self.local_w[:, 1:])
+        return grad_input
     
     def step(self) -> None:
         # Update local weights with local gradients
