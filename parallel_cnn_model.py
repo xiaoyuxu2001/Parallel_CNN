@@ -114,6 +114,7 @@ class ParallelCNN:
         # append the bias to the filter
         global_grad_bias = ring_all_reduce(local_grad_bias, self.comm, self.rank, self.size)
         global_grad_filter = ring_all_reduce(local_grad_filter, self.comm, self.rank, self.size)
+
         # apply to the corresponding conv layer
         self.conv_layers[0].filters -= self.learning_rate * (global_grad_filter / self.batch_num)
         self.conv_layers[0].bias -= self.learning_rate * (global_grad_bias / self.batch_num)
