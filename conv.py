@@ -96,7 +96,7 @@ class Conv2d:
         self.filters -= self.learning_rate * d_L_d_filters_gpu.get()
         self.bias -= self.learning_rate * d_L_d_bias_gpu.get()
 
-    def backprop(self, d_L_d_out):
+    def backprop(self, d_L_d_out, update_weights=True):
         """
         Performs a backward pass of the conv layer.
         """
@@ -117,6 +117,9 @@ class Conv2d:
         d_L_d_bias_avg = np.mean(d_L_d_bias, axis=0)
         
         # Update weights and biases
-        self.filters -= self.learning_rate * d_L_d_filters_avg
-        self.bias -= self.learning_rate * d_L_d_bias_avg
+        if update_weights:
+            self.filters -= self.learning_rate * d_L_d_filters_avg
+            self.bias -= self.learning_rate * d_L_d_bias_avg
+        
+        return d_L_d_filters_avg, d_L_d_bias_avg
 

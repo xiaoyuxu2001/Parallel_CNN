@@ -1,43 +1,6 @@
 import numpy as np
 from mpi4py import MPI
-from conv import Conv2d
-from maxpool import MaxPool2
-from dense import  Relu, Flatten
-import numpy as np
-import logging
 
-class Parallel_Convolution:
-    def ___init__(self, learning_rate):
-        self.comm = MPI.COMM_WORLD
-        self.rank = self.comm.Get_rank()
-        self.size = self.comm.Get_size()
-        
-        self.layers = [
-            Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate),
-            Relu(),
-            MaxPool2(),
-            Flatten(),
-        ]
-    
-    def forward(self, image, epoch):
-        '''
-        Returns:
-        array: a list of data subsets corresponding to the workload of each worker
-        '''
-        
-        # We transform the image from [0, 255] to [-0.5, 0.5] to make it easier
-        # to work with. This is standard practice.
-        # Forward pass through each layer
-        out = image / 255  # Normalize input
-        for layer in self.layers:  # Exclude last layer (SoftMaxCrossEntropy)
-            if isinstance(layer, Conv2d):
-                out = layer.forward(out, epoch)
-            else:
-                out = layer.forward(out)
-            if isinstance(layer, MaxPool2):
-                logging.debug("after pool", out.shape)
-                self.before_flat = out.shape
-        return out
 
 # warning: can only handle first 3x3 then 2x2 pooling with stride 1
 def divide_data(data, num_workers) -> np.ndarray:
@@ -50,18 +13,28 @@ def divide_data(data, num_workers) -> np.ndarray:
     Returns:
         array: a list of data subsets corresponding to the workload of each worker
     """
+    # rows_per_worker = data.shape[0] // num_workers
+    # redundant_rows = data.shape[0] % num_workers
+    # splits =[]
+    # for i in range(num_workers):
+    #     if i < redundant_rows:
+    #         splits.append(data[i * (rows_per_worker + 1):((i + 1) * (rows_per_worker + 1) + 2)])
+    #     elif not i == num_workers - 1:
+    #         splits.append(data[i * rows_per_worker + redundant_rows:((i + 1) - 1 * rows_per_worker + redundant_rows) + 2])
+    #     else:
+    #         splits.append (data[i * rows_per_worker + redundant_rows - 1:])
+
+    # splits = np.array(splits)
+
+    # return splits
     rows_per_worker = data.shape[0] // num_workers
     redundant_rows = data.shape[0] % num_workers
+    splits = []
 
     for i in range(num_workers):
-        if i < redundant_rows:
-            splits[i] = data[i * (rows_per_worker + 1):((i + 1) * (rows_per_worker + 1) + 2)]
-        elif not i == num_workers - 1:
-            splits[i] = data[i * rows_per_worker + redundant_rows:((i + 1) - 1 * rows_per_worker + redundant_rows) + 2]
-        else:
-            splits[i] = data[i * rows_per_worker + redundant_rows - 1:]
-
-    splits = np.array(splits)
+        start_row = i * rows_per_worker + min(i, redundant_rows)
+        end_row = start_row + rows_per_worker + (1 if i < redundant_rows else 0)
+        splits.append(data[start_row:end_row])
 
     return splits
 
@@ -83,20 +56,22 @@ def data_parallel_forward(data, comm, model):
     # send the data to each process
     split = comm.scatter(partition, root=0)
     # apply the forward pass on each process
-    partial_conv = model.layers[0].forward(split) ## Conv2d layer
-    
-    partial_res = model.layers[2].forward(partial_conv) ## MaxPool2 layer
+    # print(data)
+    print(split)
+    partial_conv = model.conv_layers[0].forward(split) ## Conv2d layer
+    partial_res = model.conv_layers[2].forward(partial_conv) ## MaxPool2 layer
 
     # flatten the data
-    partial_flatten = model.layers[2](partial_res) ## Flatten layer
+    # print(partial_res.shape)
+    partial_flatten = partial_res.flatten() ## Flatten layer
 
     # use allgatherv to collect the data from each process
     # calculate the size of the data to be received
-    recv_size = np.zeros(comm.Get_size(), dtype=np.int)
+    recv_size = np.zeros(comm.Get_size(), dtype=int)
     recv_size[comm.Get_rank()] = partial_flatten.shape[0]
     comm.Allgather([recv_size, MPI.INT], [recv_size, MPI.INT])
     # calculate the displacement of the data to be received
-    displ = np.zeros(comm.Get_size(), dtype=np.int)
+    displ = np.zeros(comm.Get_size(), dtype=int)
     displ[1:] = np.cumsum(recv_size)[:-1]
     # allocate a buffer to hold the received data
     recvbuf = np.zeros(np.sum(recv_size), dtype=np.float64)
@@ -146,22 +121,3 @@ def ring_all_reduce(all_data, comm, op):
         collection[pos] = recv.copy()
     
     return collection
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-    
-
-

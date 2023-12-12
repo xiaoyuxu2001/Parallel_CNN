@@ -53,17 +53,6 @@ class CNN:
         for layer in reversed(self.layers[:-1]):
             gradient = layer.backprop(gradient) 
         return False
-
-    # def compute_loss(self, X: np.ndarray, y: np.ndarray) -> float:
-    #     """
-    #     Compute nn's average (cross entropy) loss over the dataset (X, y)
-    #     :param X: Input dataset of shape (num_points, input_size)
-    #     :param y: Input labels of shape (num_points,)
-    #     :return: Mean cross entropy loss
-    #     """
-    #     print("computing loss")
-    #     y_hat, loss = self.forward(X, y, 0)
-    #     return loss / len(X)
     
     def train(self, X_tr: np.ndarray, y_tr: np.ndarray,
               X_test: np.ndarray, y_test: np.ndarray,
