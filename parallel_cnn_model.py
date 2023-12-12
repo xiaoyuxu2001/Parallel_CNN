@@ -84,6 +84,7 @@ class ParallelCNN:
 
         # Compute loss and softmax only on the root
         if self.rank == 0:
+            print("gathered_output here", gathered_output)
             y_hat, loss = self.softmax.forward_batch(gathered_output, label)
             print("finish forward")
             return y_hat, loss
