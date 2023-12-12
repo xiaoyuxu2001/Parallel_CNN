@@ -4,7 +4,7 @@ from dense import  Relu, Flatten, Dense, random_init, SoftMaxCrossEntropy, shuff
 import numpy as np
 from typing import Callable, List, Tuple
 import logging
-from data_parallel import data_parallel_forward, divide_data
+from data_parallel import data_parallel_forward, divide_data, ring_all_reduce
 from model_parallel import Parallel_Linear
 
 from mpi4py import MPI
@@ -13,10 +13,11 @@ import numpy as np
 
 
 class ParallelCNN:
-    def __init__(self, learning_rate, comm, rank, size):
+    def __init__(self, learning_rate, comm, rank, size, batch_num):
         self.comm = comm
         self.rank = rank
         self.size = size
+        self.batch_num = batch_num
         self.learning_rate = learning_rate
         # Initialize parallel layers
         self.conv_layers = [Conv2d(num_filters=32, kernel_size=(3, 3), learning_rate=learning_rate),
@@ -40,10 +41,7 @@ class ParallelCNN:
         comm.scatter(partition_X, out_split, root=0)
         # Apply the forward pass on each worker
         for layer in self.conv_layers:
-            if isinstance(layer, Conv2d):
-                out_split = layer.forward(out_split)
-            else:
-                out_split = layer.forward(out_split)
+            out_split = layer.forward(out_split)
 
         # allgatherv to collect the data from each process
         # calculate the size of the data to be received
@@ -84,30 +82,43 @@ class ParallelCNN:
             return None, None
 
     def backward(self, label, label_hat):
+        #---------------------------perform the backward pass on the dense layers---------------------------
         # Model parallelism for backward pass of fully connected layers
         # The gradient is scattered across workers
         if self.rank == 0:
             # Only the root has the complete label_hat and label
             gradient = self.softmax.backprop(label, label_hat)
         # Perform backward pass on the local gradients
+        local_grad = None
         for layer in reversed(self.dense_layers):
             local_grad = layer.backward(gradient)
 
         # Data parallelism for backward pass of convolutional layers
         # Gather the gradients from all workers to root
-        gathered_grads = None
-        if self.rank == 0:
-            gathered_grads = np.empty([self.size, *local_grad.shape], dtype=local_grad.dtype)
+        # gathered_grads = None
+        # if self.rank == 0:
+        #     gathered_grads = np.empty([self.size, *local_grad.shape], dtype=local_grad.dtype)
         
-        self.comm.Gather(local_grad, gathered_grads, root=0)
+        # self.comm.Gather(local_grad, gathered_grads, root=0)
 
-        # Continue the backward pass on the root worker
-        if self.rank == 0:
-            # Continue with the convolutional layers
-            gradient = gathered_grads
-            for layer in reversed(self.conv_layers):
-                gradient = layer.backward(gradient)
-        return gradient
+        #---------------------------perform the backward pass on the conv layers----------------------------
+        local_grad_bias = None
+        local_grad_filter = None
+        for layer in reversed(self.conv_layers):
+            if isinstance(layer, "Conv2d"):
+                print("Conv2d")
+                local_grad_filter,  local_grad_bias= layer.backward(local_grad, False)
+            else:
+                local_grad = layer.backward(local_grad)
+        # perform the allreduce to get the global gradient
+        # append the bias to the filter
+        global_grad_bias = ring_all_reduce(local_grad_bias, self.comm, self.rank, self.size)
+        global_grad_filter = ring_all_reduce(local_grad_filter, self.comm, self.rank, self.size)
+        # apply to the corresponding conv layer
+        self.conv_layers[0].filters -= self.learning_rate * (global_grad_filter / self.batch_num)
+        self.conv_layers[0].bias -= self.learning_rate * (global_grad_bias / self.batch_num)
+
+        return
 
     def step(self):
         # Each worker updates its part of the model
@@ -134,9 +145,11 @@ class ParallelCNN:
                 index = np.random.choice(len(X_tr), batch_num, replace=False)
                 X_s, y_s = X_tr[index], y_tr[index]
             y_hat, loss = self.forward(X_s, y_s)
-            print("loss: ", np.average(loss))
+            if self.rank == 0:
+                print("loss: ", np.average(loss))
             if self.backprop(y_s, y_hat):
                 break
+
 
         return train_loss_list, test_loss_list
     
@@ -150,8 +163,11 @@ class ParallelCNN:
             labels: predicted labels
             error_rate: prediction error rate
         """
-        error = 0
-        y_hat, loss = self.forward(X, y)
-        y_predict = np.argmax(y_hat, axis = 1)
-        error = np.count_nonzero(y_predict - y)
-        return y_predict, error / len(X)
+        if self.rank == 0:
+            error = 0
+            y_hat, loss = self.forward(X, y)
+            y_predict = np.argmax(y_hat, axis = 1)
+            error = np.count_nonzero(y_predict - y)
+            return y_predict, error / len(X)
+        else:
+            return None, None
