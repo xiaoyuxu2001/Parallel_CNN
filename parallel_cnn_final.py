@@ -11,8 +11,7 @@ def main(args):
     # Feel free to change this if you want.
         # We only use the first 1k examples of each set in the interest of time.
     # Feel free to change this if you want.
-    print(f"start")
-    MPI.Init()
+    # MPI.Init()
     # declare MPI variables
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -49,7 +48,7 @@ def main(args):
     print("Time for training: ", format(end_time - start_time, '.2f'), "s")
     train_labels, train_error_rate = cnn.test(train_images, train_labels)
     test_labels, test_error_rate = cnn.test(test_images, test_labels)
-    MPI.Finalize()
+    # MPI.Finalize()
     with open(args.train_out, "w") as f:
             for label in train_labels:
                 f.write(str(label) + "\n")
@@ -83,7 +82,7 @@ if __name__ == '__main__':
   parser.add_argument('--num_image', type=int, default=50, help='number of images used')
   parser.add_argument('--learning_rate', type=float, default=0.05,
                       help='learning rate')
-  parser.add_argument('--batch_num', type=int, default=1,
+  parser.add_argument('--batch_num', type=int, default=128,
                       help='batch_num')
   args = parser.parse_args()
   print(f"start")

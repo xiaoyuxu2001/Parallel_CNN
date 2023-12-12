@@ -30,64 +30,73 @@ class ParallelCNN:
         self.softmax = SoftMaxCrossEntropy()
         logging.info("model initialized")
 
-    def forward(self, image, label, comm, rank, size):
-        #---------------------------perform the forward pass on the conv layers---------------------------
+    def forward(self, image, label):
+        # perform the forward pass on the conv layers
         out_split = None
         partition_X = None
-        if rank == 0:
+        if self.rank == 0:
             # Split the data into subsets for each worker
-            partition_X = divide_data(image, size)
-        # Send the data to each worker
-        comm.scatter(partition_X, out_split, root=0)
+            partition_X = divide_data(image, self.size)
+        out_split = self.comm.scatter(partition_X, root=0)
         # Apply the forward pass on each worker
         for layer in self.conv_layers:
             out_split = layer.forward(out_split)
 
         # allgatherv to collect the data from each process
         # calculate the size of the data to be received
-        recv_size = np.zeros(comm.Get_size(), dtype=int)
-        recv_size[comm.Get_rank()] = out_split.shape[0]
-        recv_size = comm.allgather(recv_size)
+        recv_num : int = (self.batch_num // self.size) * out_split.shape[1] 
+        recv_size = np.full(self.size, recv_num, dtype=int)
         # calculate the displacement of the data to be received
-        displacements = np.zeros(comm.Get_size(), dtype=int)
-        for i in range(1, comm.Get_size()):
+        displacements = np.zeros(self.size, dtype=int)
+        for i in range(1, self.size):
             displacements[i] = displacements[i - 1] + recv_size[i - 1]
         # calculate the total size of the data to be received
         total_recv_size = np.sum(recv_size)
         # allocate a buffer to hold the received data
         recvbuf = np.zeros(total_recv_size, dtype=np.float64)
-        # perform the allgatherv
-        comm.Allgatherv([out_split, MPI.FLOAT], [recvbuf, (recv_size, displacements), MPI.FLOAT])
+        self.comm.Allgatherv([out_split, MPI.DOUBLE], [recvbuf, (recv_size, displacements), MPI.DOUBLE])
 
         #---------------------------perform the forward pass on the dense layers---------------------------
-        out = recvbuf.reshape((1, -1))
-        print(out.shape) #(20000,)
+        out = recvbuf.reshape((self.batch_num, 20000))
+        # print("out shape: ", out.shape)
+        i = 0
         for layer in self.dense_layers:
             out = layer.forward(out)
-            print(out.shape)
+            # only the root process has the complete output
+            if i == 0 and self.rank != 0:
+                # scatter the data to each process
+                out = np.empty(self.batch_num * 128, dtype=np.float64)
+                i += 1
+            elif i == 1:
+                break
+            self.comm.Bcast(out, root=0)
+            print("out shape: ", out.shape)
+            out = out.reshape((self.batch_num, 128))
 
-        # Gather outputs at root for softmax and loss
-        gathered_output = None
-        if rank == 0:
-            gathered_output = np.empty([size, *out_split.shape], dtype=out_split.dtype)
-        comm.Gather(out_split, gathered_output, root=0)
-        print(out_split.shape)
-        print(gathered_output.shape)
+
+
+
+        gathered_output = out
+
 
         # Compute loss and softmax only on the root
-        if rank == 0:
-            y_hat, loss = self.softmax.forward(gathered_output, label)
+        if self.rank == 0:
+            y_hat, loss = self.softmax.forward_batch(gathered_output, label)
+            print("finish forward")
             return y_hat, loss
         else:
+            print("finish forward non root")
             return None, None
 
-    def backward(self, label, label_hat):
+    def backprop(self, label, label_hat):
         #---------------------------perform the backward pass on the dense layers---------------------------
         # Model parallelism for backward pass of fully connected layers
         # The gradient is scattered across workers
+        print("start backprop")
+        gradient = None
         if self.rank == 0:
             # Only the root has the complete label_hat and label
-            gradient = self.softmax.backprop(label, label_hat)
+            gradient = self.softmax.backprop_batch(label, label_hat)
         # Perform backward pass on the local gradients
         local_grad = None
         for layer in reversed(self.dense_layers):
@@ -143,8 +152,9 @@ class ParallelCNN:
             print('--- Epoch %d ---' % (e))
             X_s, y_s = None, None
             if self.rank == 0:
-                index = np.random.choice(len(X_tr), batch_num, replace=False)
+                index = np.random.choice(len(X_tr), batch_num, replace=True)
                 X_s, y_s = X_tr[index], y_tr[index]
+                # print("X_s's shape", X_s.shape) ## X_s's shape (128, 28, 28)
             y_hat, loss = self.forward(X_s, y_s)
             if self.rank == 0:
                 print("loss: ", np.average(loss))
