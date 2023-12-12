@@ -57,22 +57,34 @@ class ParallelCNN:
         self.comm.Allgatherv([out_split, MPI.DOUBLE], [recvbuf, (recv_size, displacements), MPI.DOUBLE])
 
         #---------------------------perform the forward pass on the dense layers---------------------------
-        out = recvbuf.reshape((1, -1))
-        print(out.shape) #(20000,)
-        for layer in self.dense_layers:
-            out = layer.forward(out)
-            print(out.shape)
-
-        # Gather outputs at root for softmax and loss
-        gathered_output = None
-        if rank == 0:
-            gathered_output = np.empty([size, *out_split.shape], dtype=out_split.dtype)
-        comm.Gather(out_split, gathered_output, root=0)
-        print(out_split.shape)
-        print(gathered_output.shape)
+        out = recvbuf.reshape((self.batch_num, 20000))
+        # print("out shape: ", out.shape)
+        
+        
+        for i, layer in enumerate(self.dense_layers):
+            try:
+                out = layer.forward(out)
+            except Exception as e:
+                print(f"An error occurred on rank {self.rank} during forward pass: {e}")
+                raise
+            
+            # After the first dense layer, broadcast 'out' from the root process to all other processes
+            if i == 0:
+                if self.rank == 0:
+                    # The root process has the correct 'out', which will be broadcasted
+                    out = np.where(out > 0, out, 0)
+                else:
+                    out = np.empty(self.batch_num * 128, dtype=np.float64)
+                self.comm.Bcast(out, root=0)
+                out = out.reshape((self.batch_num, 128))
+                # print(out)
+        gathered_output = out
+        print(out)
+        # print("Finished forward, shape is ",gathered_output.shape)
 
         # Compute loss and softmax only on the root
         if self.rank == 0:
+            print("gathered_output: ", gathered_output)
             y_hat, loss = self.softmax.forward_batch(gathered_output, label)
             print("finish forward")
             return y_hat, loss
@@ -85,11 +97,21 @@ class ParallelCNN:
         # Model parallelism for backward pass of fully connected layers
         # The gradient is scattered across workers
         print("start backprop")
+        self.comm.barrier()
         gradient = None
         if self.rank == 0:
             # Only the root has the complete label_hat and label
             gradient = self.softmax.backprop_batch(label, label_hat)
+            array1 = gradient[:, 0:1]  # First column
+            array2 = gradient[:, 1:2]  # Second column
+            # Stack the arrays to get a new array of shape (2, 128, 1)
+            gradient = np.stack((array1, array2))
         # Perform backward pass on the local gradients
+        # spread the gradient across the processes
+        # send the gradient to each process
+        
+        gradient = self.comm.scatter(gradient, root=0)
+        print("gradient shape: ", gradient.shape)
         local_grad = None
         for layer in reversed(self.dense_layers):
             local_grad = layer.backward(gradient)
@@ -149,7 +171,7 @@ class ParallelCNN:
                 # print("X_s's shape", X_s.shape) ## X_s's shape (128, 28, 28)
             y_hat, loss = self.forward(X_s, y_s)
             if self.rank == 0:
-                print("loss: ", np.average(loss))
+                print("loss: ", loss)
             if self.backprop(y_s, y_hat):
                 break
 
