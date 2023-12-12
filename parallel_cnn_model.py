@@ -24,9 +24,9 @@ class ParallelCNN:
                             Relu(),
                             MaxPool2(),
                             Flatten()]
-        self.dense_layers = [Parallel_Linear(20000, 128, random_init, learning_rate),
+        self.dense_layers = [Parallel_Linear(20000, 128, random_init, learning_rate, layer_index = 0),
                         #   Relu(), 
-                          Parallel_Linear(128, 2, random_init, learning_rate)]
+                          Parallel_Linear(128, 2, random_init, learning_rate, layer_index = 1)]
         self.softmax = SoftMaxCrossEntropy()
         logging.info("model initialized")
 
@@ -77,27 +77,25 @@ class ParallelCNN:
                     out = np.empty(self.batch_num * 128, dtype=np.float64)
                 self.comm.Bcast(out, root=0)
                 out = out.reshape((self.batch_num, 128))
-                # print(out)
         gathered_output = out
-        print(out)
+        # print(out)
         # print("Finished forward, shape is ",gathered_output.shape)
 
         # Compute loss and softmax only on the root
         if self.rank == 0:
-            print("gathered_output here", gathered_output)
+            # print("gathered_output here", gathered_output)
             y_hat, loss = self.softmax.forward_batch(gathered_output, label)
-            print("finish forward")
+            # print("finish forward")
             return y_hat, loss
         else:
-            print("finish forward non root")
+            # print("finish forward non root")
             return None, None
 
     def backprop(self, label, label_hat):
         #---------------------------perform the backward pass on the dense layers---------------------------
         # Model parallelism for backward pass of fully connected layers
         # The gradient is scattered across workers
-        print("start backprop")
-        self.comm.barrier()
+        # self.comm.barrier()
         gradient = None
         if self.rank == 0:
             # Only the root has the complete label_hat and label
@@ -115,6 +113,7 @@ class ParallelCNN:
         local_grad = None
         for layer in reversed(self.dense_layers):
             local_grad = layer.backward(gradient)
+        print("Done backprop for dense layers")
 
         # Data parallelism for backward pass of convolutional layers
         # Gather the gradients from all workers to root
@@ -128,7 +127,7 @@ class ParallelCNN:
         local_grad_bias = None
         local_grad_filter = None
         for layer in reversed(self.conv_layers):
-            if isinstance(layer, "Conv2d"):
+            if isinstance(layer, Conv2d):
                 print("Conv2d")
                 local_grad_filter,  local_grad_bias= layer.backward(local_grad, False)
             else:
