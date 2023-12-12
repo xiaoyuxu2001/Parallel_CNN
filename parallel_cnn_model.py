@@ -59,25 +59,28 @@ class ParallelCNN:
         #---------------------------perform the forward pass on the dense layers---------------------------
         out = recvbuf.reshape((self.batch_num, 20000))
         # print("out shape: ", out.shape)
-        i = 0
-        for layer in self.dense_layers:
-            out = layer.forward(out)
-            # only the root process has the complete output
-            if i == 0 and self.rank != 0:
-                # scatter the data to each process
-                out = np.empty(self.batch_num * 128, dtype=np.float64)
-                i += 1
-            elif i == 1:
-                break
-            self.comm.Bcast(out, root=0)
-            print("out shape: ", out.shape)
-            out = out.reshape((self.batch_num, 128))
-
-
-
-
+        
+        
+        for i, layer in enumerate(self.dense_layers):
+            try:
+                out = layer.forward(out)
+            except Exception as e:
+                print(f"An error occurred on rank {self.rank} during forward pass: {e}")
+                raise
+            
+            # After the first dense layer, broadcast 'out' from the root process to all other processes
+            if i == 0:
+                if self.rank == 0:
+                    # The root process has the correct 'out', which will be broadcasted
+                    out = np.where(out > 0, out, 0)
+                else:
+                    out = np.empty(self.batch_num * 128, dtype=np.float64)
+                self.comm.Bcast(out, root=0)
+                out = out.reshape((self.batch_num, 128))
+                # print(out)
         gathered_output = out
-
+        print(out)
+        # print("Finished forward, shape is ",gathered_output.shape)
 
         # Compute loss and softmax only on the root
         if self.rank == 0:
