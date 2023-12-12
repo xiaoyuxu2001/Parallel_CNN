@@ -32,13 +32,12 @@ class Parallel_Linear:
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         # Insert bias term
-        print(x.shape)
-        bias = np.ones((x.shape[0], 1))
-        print(x.shape)
+        # print("x': " + str(x.shape))
+        shape = x.shape[0]
+        bias = np.ones((shape, 1))
         x = np.hstack((x, bias))
-        print(x.shape)
         self.input = x
-        print(self.local_w.T.shape)
+        print("local_w.T.shape, rank", ((self.local_w.T.shape), self.rank))
         # Perform the local part of the forward pass
         local_y = np.dot(x, self.local_w.T)
         
@@ -57,9 +56,8 @@ class Parallel_Linear:
 
     def backward(self, dz: np.ndarray) -> np.ndarray:
         # Scatter the gradient among all workers
-        local_dz = np.empty((dz.shape[0], self.local_w.shape[0]), dtype=np.float64)
-        self.comm.Scatter(dz, local_dz, root=0)
-        
+
+        local_dz = dz
         # Compute local gradients for weights
         self.local_dw = np.dot(local_dz.T, self.input).reshape(1, -1)
     
