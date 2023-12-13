@@ -24,9 +24,9 @@ class ParallelCNN:
                             Relu(),
                             MaxPool2(),
                             Flatten()]
-        self.dense_layers = [Parallel_Linear(20000, 128, random_init, learning_rate, layer_index = 0),
+        self.dense_layers = [Parallel_Linear(20000, 128 // self.size, random_init, learning_rate, layer_index = 0),
                         #   Relu(), 
-                          Parallel_Linear(128, 2, random_init, learning_rate, layer_index = 1)]
+                          Parallel_Linear(128 // self.size, 2, random_init, learning_rate, layer_index = 1)]
         self.softmax = SoftMaxCrossEntropy()
         logging.info("model initialized")
 
@@ -60,28 +60,23 @@ class ParallelCNN:
         out = recvbuf.reshape((self.batch_num, 20000))
         # print("out shape: ", out.shape)
         
+        for layer in self.dense_layers:
+            out = layer.forward(out)
         
-        for i, layer in enumerate(self.dense_layers):
-            try:
-                out = layer.forward(out)
-            except Exception as e:
-                print(f"An error occurred on rank {self.rank} during forward pass: {e}")
-                raise
-            
-            # After the first dense layer, broadcast 'out' from the root process to all other processes
-            if i == 0:
-                if self.rank == 0:
-                    # The root process has the correct 'out', which will be broadcasted
-                    out = np.where(out > 0, out, 0)
-                else:
-                    out = np.empty(self.batch_num * 128, dtype=np.float64)
-                self.comm.Bcast(out, root=0)
-                out = out.reshape((self.batch_num, 128))
-        gathered_output = out
-        # print(out)
-        # print("Finished forward, shape is ",gathered_output.shape)
+        print("out shape111: ", out.shape)
+        
+        # gather the output from each process
+        gathered_output = None
+        if self.rank == 0:
+            # The receiving buffer size is the size of 'out' times the number of processes
+            gathered_output = np.empty((self.size, *out.shape), dtype=out.dtype)
 
-        # Compute loss and softmax only on the root
+        # Gather the output from each process to the root
+        self.comm.Gather(out, gathered_output, root=0)
+        # sum the output from each process
+        gathered_output = np.sum(gathered_output, axis=0)
+        
+
         if self.rank == 0:
             # print("gathered_output here", gathered_output)
             y_hat, loss = self.softmax.forward_batch(gathered_output, label)
@@ -92,48 +87,32 @@ class ParallelCNN:
             return None, None
 
     def backprop(self, label, label_hat):
-        #---------------------------perform the backward pass on the dense layers---------------------------
-        # Model parallelism for backward pass of fully connected layers
-        # The gradient is scattered across workers
-        # self.comm.barrier()
-        gradient = None
+        # 1. perform the backward pass on the dense layers
+        gradient_sent, gradient = None, None
         if self.rank == 0:
-            # Only the root has the complete label_hat and label
             gradient = self.softmax.backprop_batch(label, label_hat)
-            array1 = np.array(gradient[:, 0:1])  # First column
-            print("array1.shape",array1.shape)
-            array2 = np.array(gradient[:, 1:2]) # Second column
-            # Stack the arrays to get a new array of shape (2, 128, 1)
-            gradient = np.array(np.hstack((array1, array2)))
-            # print("gradient", gradient.shape)
-        # Perform backward pass on the local gradients
-        # spread the gradient across the processes
-        # send the gradient to each process
-        
-        # gradient = self.comm.scatter(gradient, root=0)
-        # print("gradient shape: ", gradient.shape)
-        # local_grad = None
+            # spread the gradient across the processes
+            gradient_sent = np.full((self.size, *gradient.shape), gradient, dtype=np.float64)
+        # scatter the gradient to each process
+        gradient = self.comm.scatter(gradient_sent, root=0)
+        print("gradient shape: ", gradient.shape)
         for layer in reversed(self.dense_layers):
-            gradient = layer.backward(gradient)
-        print("Done backprop for dense layers")
+            gradient = layer.backprop(gradient)
+            print("gradient shape2: ", gradient.shape)
 
-        # Data parallelism for backward pass of convolutional layers
-        # Gather the gradients from all workers to root
-        # gathered_grads = None
-        # if self.rank == 0:
-        #     gathered_grads = np.empty([self.size, *local_grad.shape], dtype=local_grad.dtype)
-        
-        # self.comm.Gather(local_grad, gathered_grads, root=0)
+        self.comm.Barrier()
+        print("we are here")
 
-        #---------------------------perform the backward pass on the conv layers----------------------------
+        # 2. perform the backward pass on the conv layers
         local_grad_bias = None
         local_grad_filter = None
+        local_grad = gradient
         for layer in reversed(self.conv_layers):
             if isinstance(layer, Conv2d):
                 print("Conv2d")
-                local_grad_filter,  local_grad_bias= layer.backward(local_grad, False)
+                local_grad_filter,  local_grad_bias= layer.backprop(local_grad, False)
             else:
-                local_grad = layer.backward(local_grad)
+                local_grad = layer.backprop(local_grad)
         # perform the allreduce to get the global gradient
         # append the bias to the filter
         global_grad_bias = ring_all_reduce(local_grad_bias, self.comm, self.rank, self.size)
