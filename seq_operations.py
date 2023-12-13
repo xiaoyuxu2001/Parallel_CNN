@@ -87,16 +87,28 @@ def prod(arr):
         total_product *= element
     return total_product
 
-def argmax(arr):
-    """
-    Find the index of the maximum element in an array sequentially.
-    """
-    max_index = 0
-    for i, element in enumerate(arr):
-        if element > max_value:
-            max_value = element
-            max_index = i
-    return max_index
+def argmax(arr, axis=None):
+    if axis is None:
+        # Find max in the flattened array
+        max_value = arr.flatten()[0]
+        max_index = 0
+        for i, element in enumerate(arr.flatten()):
+            if element > max_value:
+                max_value = element
+                max_index = i
+        return np.unravel_index(max_index, arr.shape)
+    else:
+        if axis >= len(arr.shape):
+            raise ValueError("Axis out of bounds for array")
+
+        # Find max along a specific axis
+        max_indices = np.zeros(arr.shape[:axis] + arr.shape[axis+1:], dtype=int)
+        for index, _ in np.ndenumerate(max_indices):
+            index_slice = index[:axis] + (slice(None),) + index[axis+1:]
+            max_indices[index] = np.argmax(arr[index_slice])
+
+        return max_indices
+
 
 def exp(arr):
     result = np.zeros_like(arr, dtype=float)
@@ -115,3 +127,10 @@ def log(arr):
     for i in range(arr_flat.shape[0]):
         result_flat[i] = np.log(arr_flat[i])
     return result_flat.reshape(arr.shape)
+
+def count_nonzero(arr):
+    count = 0
+    for element in arr.flatten():
+        if element != 0:
+            count += 1
+    return count

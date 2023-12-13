@@ -1,3 +1,4 @@
+import seq_operations as seq
 from conv_seq import Conv2d
 from maxpool_seq import MaxPool2
 from dense_seq import  Relu, Flatten, Dense, random_init, SoftMaxCrossEntropy, shuffle
@@ -75,8 +76,10 @@ class CNN:
             index = np.random.choice(len(X_tr), batch_num, replace=False) 
             X_s, y_s = X_tr[index], y_tr[index]
             y_hat, loss = self.forward(X_s, y_s)
-            print("y_hat: ", np.argmax(y_hat, axis = 1), y_hat)
-            print("loss: ", np.average(loss))
+            print("y_hat: ", seq.argmax(y_hat, axis = 1), y_hat)
+            print("loss: ", seq.mean(loss))
+            # assert(np.any(seq.argmax(y_hat, axis = 1)) == np.any(np.argmax(y_hat, axis = 1)))
+            # assert(seq.mean(loss) == np.average(loss))
             if self.backprop(y_s, y_hat):
                 break
         return train_loss_list, test_loss_list
@@ -93,8 +96,9 @@ class CNN:
         """
         error = 0
         y_hat, loss = self.forward(X, y)
-        y_predict = np.argmax(y_hat, axis = 1)
-        error = np.count_nonzero(y_predict - y)
+        y_predict = seq.argmax(y_hat, axis = 1)
+        # assert(y_predict == np.argmax(y_hat, axis = 1))
+        error = seq.count_nonzero(y_predict - y)
         return y_predict, error / len(X)
     
 INIT_FN_TYPE = Callable[[Tuple[int, int]], np.ndarray]
@@ -131,7 +135,8 @@ class Linear:
         # Insert bias term
         x = np.insert(x, 0, 1, axis=1)
         self.input = x
-        return np.dot(x, self.w.T)
+        # assert(np.any(seq.dot(x, self.w.T)) == np.any(np.dot(x, self.w.T)))
+        return seq.dot(x, self.w.T)
        
     def backprop(self, dz: np.ndarray) -> np.ndarray:
         """
@@ -145,10 +150,12 @@ class Linear:
         """
         # Assuming self.input shape: (batch_size, num_inputs)
         # Compute gradient w.r.t. weights (self.dw)
-        self.dw = np.dot(dz.T, self.input) / dz.shape[0]  # Averaging over the batch
+        self.dw = seq.dot(dz.T, self.input) / dz.shape[0]  # Averaging over the batch
+        # assert(np.any(seq.dot(dz.T, self.input)) == np.any(np.dot(dz.T, self.input)))
         self.w = self.w - self.lr * self.dw
         # Compute gradient w.r.t. inputs (dx)
-        dx = np.dot(dz, self.w[:, 1:])
+        dx = seq.dot(dz, self.w[:, 1:])
+        # assert(np.any(np.dot(dz, self.w[:, 1:])) == np.any(seq.dot(dz, self.w[:, 1:])))
         print(dz.shape, self.w.shape, self.dw.shape, dx.shape)
 
         return dx

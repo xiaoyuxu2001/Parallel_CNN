@@ -80,7 +80,7 @@ if __name__ == '__main__':
                       help='path to store prediction on validation data')
   parser.add_argument('--metrics_out', type=str, default='metrics_out.txt',
                       help='path to store training and testing metrics')
-  parser.add_argument('--num_epoch', type=int, default=10,
+  parser.add_argument('--num_epoch', type=int, default=5,
                       help='number of training epochs')
   parser.add_argument('--num_image', type=int, default=200, help='number of images used')
   # parser.add_argument('hidden_units', type=int,
