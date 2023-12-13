@@ -1,6 +1,6 @@
-from conv import Conv2d
-from maxpool import MaxPool2
-from dense import  Relu, Flatten, Dense, random_init, SoftMaxCrossEntropy, shuffle
+from conv_seq import Conv2d
+from maxpool_seq import MaxPool2
+from dense_seq import  Relu, Flatten, Dense, random_init, SoftMaxCrossEntropy, shuffle
 import numpy as np
 from typing import Callable, List, Tuple
 import logging

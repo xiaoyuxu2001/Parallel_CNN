@@ -82,14 +82,14 @@ if __name__ == '__main__':
                       help='path to store training and testing metrics')
   parser.add_argument('--num_epoch', type=int, default=10,
                       help='number of training epochs')
-  parser.add_argument('--num_image', type=int, default=50, help='number of images used')
+  parser.add_argument('--num_image', type=int, default=200, help='number of images used')
   # parser.add_argument('hidden_units', type=int,
   #                     help='number of hidden units')
   # parser.add_argument('init_flag', type=int, choices=[1, 2],
   #                     help='weight initialization functions, 1: random')
   parser.add_argument('--learning_rate', type=float, default=0.001,
                       help='learning rate')
-  parser.add_argument('--batch_num', type=int, default=128,
+  parser.add_argument('--batch_num', type=int, default=4,
                       help='batch_num')
   args = parser.parse_args()
   main(args)
