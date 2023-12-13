@@ -100,19 +100,21 @@ class ParallelCNN:
         if self.rank == 0:
             # Only the root has the complete label_hat and label
             gradient = self.softmax.backprop_batch(label, label_hat)
-            array1 = gradient[:, 0:1]  # First column
-            array2 = gradient[:, 1:2]  # Second column
+            array1 = np.array(gradient[:, 0:1])  # First column
+            print("array1.shape",array1.shape)
+            array2 = np.array(gradient[:, 1:2]) # Second column
             # Stack the arrays to get a new array of shape (2, 128, 1)
-            gradient = np.stack((array1, array2))
+            gradient = np.array(np.hstack((array1, array2)))
+            # print("gradient", gradient.shape)
         # Perform backward pass on the local gradients
         # spread the gradient across the processes
         # send the gradient to each process
         
-        gradient = self.comm.scatter(gradient, root=0)
-        print("gradient shape: ", gradient.shape)
-        local_grad = None
+        # gradient = self.comm.scatter(gradient, root=0)
+        # print("gradient shape: ", gradient.shape)
+        # local_grad = None
         for layer in reversed(self.dense_layers):
-            local_grad = layer.backward(gradient)
+            gradient = layer.backward(gradient)
         print("Done backprop for dense layers")
 
         # Data parallelism for backward pass of convolutional layers

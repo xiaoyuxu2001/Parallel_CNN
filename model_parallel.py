@@ -1,6 +1,7 @@
 from mpi4py import MPI
 import numpy as np
 from typing import Callable, Tuple
+from fast_matrix_mult import matmul_parallel_divideA_horizontal, matmul_parallel_divideB_vertical
 
 INIT_FN_TYPE = Callable[[Tuple[int, int]], np.ndarray]
 
@@ -14,68 +15,64 @@ class Parallel_Linear:
         # Initialize learning rate for SGD
         self.lr = learning_rate
         self.layer_index = layer_index
-        # Determine the local output size based on the number of devices
-        local_output_size = output_size // self.size
-        if self.rank == self.size - 1:
-            local_output_size += output_size % self.size
-        print(" output_size, local_output_size", (output_size, local_output_size))
         # Initialize weights for the local tensor
-        self.local_w = weight_init_fn((local_output_size, input_size + 1))
-        print("(local_output_size, input_size + 1)", (local_output_size, input_size + 1))
-        self.local_w[:, 0] = 0  # Set bias weights to 0
+        self.w = weight_init_fn((output_size, input_size + 1))
+        self.w[:, 0] = 0  # Set bias weights to 0
         # Initialize gradients
-        self.local_dw = np.zeros_like(self.local_w)
+        self.dw = np.zeros_like(self.w)
         self.input = None
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         # Insert bias term
-        print(x.shape)
         bias = np.ones((x.shape[0], 1))
-        print(x.shape)
         x = np.hstack((x, bias))
         print(x.shape)
         self.input = x
-        print(self.local_w.T.shape)
-        # Perform the local part of the forward pass
-        local_y = np.dot(x, self.local_w.T)
-        
-        # Gather the outputs from all workers to form the full output
+        print(self.w.T.shape)
+  
+        x_row, x_col = x.shape
+        w_row, w_col = self.w.T.shape
         gathered_y = None
-        print("local: ", self.local_w.shape[0] * self.size)
-        if self.rank == 0:
-            gathered_y = np.empty((x.shape[0], self.local_w.shape[0] * self.size), dtype=np.float64)
-        
-        self.comm.Gather(local_y, gathered_y, root=0)
-        
-        # Only the root process will have the complete output
-        if self.rank == 0:
-            print("gathered_y's shape: " + str(gathered_y.shape))
+        assert(x_col == w_row)
+        if self.layer_index == 0:
+            gathered_y = matmul_parallel_divideA_horizontal(x, self.w.T, x_row, x_col, w_col)
+        elif self.layer_index == 1:
+            gathered_y = matmul_parallel_divideB_vertical(x, self.w.T, x_row, x_col, w_col)
         return gathered_y
 
     def backward(self, dz: np.ndarray) -> np.ndarray:
-        # Scatter the gradient among all workers
-        local_dz = np.empty((dz.shape[0], self.local_w.shape[0]), dtype=np.float64)
-        self.comm.Scatter(dz, local_dz, root=0)
         
         # Compute local gradients for weights
-        self.local_dw = np.dot(local_dz.T, self.input).reshape(1, -1)
-    
-        # if self.rank == 0:
-        #     global_dw = np.empty((self.size, 129))
-        # else:
-        #     global_dw = None
-        # print("ppakwoj")
-        # # Gather all local gradients to the root process
-        # self.comm.Gather(self.local_dw, global_dw, root=0)
+        dz_row, dz_col = dz.T.shape
+        in_row, in_col = self.input[:, 1:].shape
+        w_row, w_col = self.w[:, 1:].shape
+        print(dz_col, in_row)
+        assert(dz_col == in_row)
+        print(dz_col, dz_row, w_row, w_col)
+        assert(dz_row == w_row)
         
-        
-        # Compute gradient for input
-        grad_input = np.dot(dz, self.local_w[:, 1:])
-        return grad_input
+        if self.layer_index == 1:
+            print("Entering layer1 backward")
+            print(dz_row, dz_col, in_row, in_col)
+            print(dz.T.shape)
+            self.dw = matmul_parallel_divideB_vertical(dz.T, self.input[:, 1:], dz_row, dz_col, in_col)
+            print("Step layer1 backward")
+            self.w = self.w - self.lr * self.dw
+            dx =  matmul_parallel_divideB_vertical(dz, self.w[:, 1:].T, dz_col, dz_row, w_col)
+        elif self.layer_index == 0:
+            print("Entering layer0 backward")
+            self.dw = matmul_parallel_divideA_horizontal(dz.T, self.input[:, 1:], dz_row, dz_col, in_col)
+            print("Step layer0 backward")
+            self.w = self.w - self.lr * self.dw
+            dx =  matmul_parallel_divideA_horizontal(dz, self.w[:, 1:].T, dz_col,dz_row, w_col)
+        # self.dw = np.dot(dz.T, self.input) / dz.shape[0]  # Averaging over the batch
+        # self.w = self.w - self.lr * self.dw
+        # dx = np.dot(dz, self.w)
+        return dx
     
-    def step(self) -> None:
-        # Update local weights with local gradients
-        self.local_w -= self.lr * self.local_dw
+    # def step(self) -> None:
+    #     # Update local weights with local gradients
+    #     self.local_w -= self.lr * self.local_dw
 
 
     

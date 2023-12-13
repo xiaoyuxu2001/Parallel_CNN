@@ -147,7 +147,7 @@ class SoftMaxCrossEntropy:
 
         sum_exp = np.sum(np.exp(z), axis=1, keepdims=True)
         softmax_output = np.divide(np.exp(z), sum_exp)
-        print("softmax_output here", softmax_output)
+        # print("softmax_output here", softmax_output)
         return softmax_output
 
     def _cross_entropy(self, y: int, y_hat: np.ndarray) -> float:
@@ -205,7 +205,7 @@ class SoftMaxCrossEntropy:
             loss: cross entropy loss, arrray of shape (num_batch,)
         """    
         y_hat_batch = self._softmax_batch(z)
-        print("y_hat_batch: ", y_hat_batch)
+        # print("y_hat_batch: ", y_hat_batch)
         # print(z)
         cross_entropy_batch = self._cross_entropy_batch(y, y_hat_batch)
         return y_hat_batch, cross_entropy_batch
