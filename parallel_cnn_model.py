@@ -35,9 +35,11 @@ class ParallelCNN:
         # perform the forward pass on the conv layers
         out_split = None
         partition_X = None
+        print("image shape: ", image.shape)
         if self.rank == 0:
             # Split the data into subsets for each worker
             partition_X = divide_data(image, self.size)
+        print("partition_X shape: ", len(partition_X), partition_X[0].shape)
         out_split = self.comm.scatter(partition_X, root=0)
         # Apply the forward pass on each worker
         for layer in self.conv_layers:
@@ -54,7 +56,9 @@ class ParallelCNN:
         # calculate the total size of the data to be received
         total_recv_size = np.sum(recv_size)
         # allocate a buffer to hold the received data
-        recvbuf = np.zeros(total_recv_size, dtype=np.float64)
+        recvbuf = np.zeros(total_recv_size, dtype=np.float16)
+        print("recvbuf shape: ", recvbuf.shape)
+        print("out_split shape: ", out_split.shape)
         self.comm.Allgatherv([out_split, MPI.DOUBLE], [recvbuf, (recv_size, displacements), MPI.DOUBLE])
 
         #---------------------------perform the forward pass on the dense layers---------------------------
@@ -64,7 +68,6 @@ class ParallelCNN:
         for layer in self.dense_layers:
             out = layer.forward(out)
         
-        print("out shape111: ", out.shape)
         
         # gather the output from each process
         gathered_output = None
@@ -93,7 +96,7 @@ class ParallelCNN:
         if self.rank == 0:
             gradient = self.softmax.backprop_batch(label, label_hat)
             # spread the gradient across the processes
-            gradient_sent = np.full((self.size, *gradient.shape), gradient, dtype=np.float64)
+            gradient_sent = np.full((self.size, *gradient.shape), gradient, dtype=np.float16)
         # scatter the gradient to each process
         gradient = self.comm.scatter(gradient_sent, root=0)
         for layer in reversed(self.dense_layers):
@@ -109,10 +112,10 @@ class ParallelCNN:
         local_grad = gradient[self.rank * self.batch_num // self.size : (self.rank + 1) * self.batch_num // self.size]
         for i, layer in enumerate(reversed(self.conv_layers)):
             if isinstance(layer, Conv2d):
-                print("Conv2d")
+                # print("Conv2d")
                 local_grad_filter,  local_grad_bias= layer.backprop(local_grad, False)
-                print("local_grad_filter shape: ", local_grad_filter.shape)
-                print("local_grad_bias shape: ", local_grad_bias.shape)
+                # print("local_grad_filter shape: ", local_grad_filter.shape)
+                # print("local_grad_bias shape: ", local_grad_bias.shape)
             else:
                 local_grad = layer.backprop(local_grad)
         # perform the allreduce to get the global gradient
@@ -155,13 +158,16 @@ class ParallelCNN:
                 index = np.random.choice(len(X_tr), batch_num, replace=True)
                 X_s, y_s = X_tr[index], y_tr[index]
                 # print("X_s's shape", X_s.shape) ## X_s's shape (128, 28, 28)
+            time_forward_start = time.time()
             y_hat, loss = self.forward(X_s, y_s)
-            if self.rank == 0:
-                print("loss: ", loss)
+            time_forward_end = time.time()
+            print("Time for forward: ", format(time_forward_end - time_forward_start, '.2f'), "s")
+            # if self.rank == 0:
+            #     print("loss: ", loss)
             if self.backprop(y_s, y_hat):
                 break
             time_end = time.time()
-            print("Time for epoch: ", format(time_end - time_start, '.2f'), "s")
+            print("time for backprop: ", format(time_end - time_forward_end, '.2f'), "s")
 
 
         return train_loss_list, test_loss_list
