@@ -77,6 +77,7 @@ class Flatten:
 
     def backprop(self, d_L_d_out):
         # input_shape is the shape before we flattened it
+        print("d_L_d_out: ", d_L_d_out.shape)
         input_shape = self.input_shape
         ret = np.empty(input_shape)
         for i in range(len(d_L_d_out)):

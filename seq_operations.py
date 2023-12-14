@@ -134,3 +134,18 @@ def count_nonzero(arr):
         if element != 0:
             count += 1
     return count
+
+def insert_ones_column(x):
+    # Initialize a new array with the required shape
+    new_array = np.empty((x.shape[0], x.shape[1] + 1), dtype=x.dtype)
+    
+    # Insert 1 in the first column
+    for i in range(x.shape[0]):
+        new_array[i][0] = 1
+    
+    # Copy the rest of the data from the original array
+    for i in range(x.shape[0]):
+        for j in range(1, x.shape[1] + 1):
+            new_array[i][j] = x[i][j - 1]
+    
+    return new_array

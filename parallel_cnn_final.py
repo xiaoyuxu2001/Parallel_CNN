@@ -45,24 +45,24 @@ def main(args):
     start_time = time.time()
     train_losses, test_losses = cnn.train(train_images, train_labels, test_images, test_labels, n_epochs=args.num_epoch, batch_num=args.batch_num)
     end_time = time.time()
-    print("Time for training: ", format(end_time - start_time, '.2f'), "s")
     train_labels, train_error_rate = cnn.test(train_images, train_labels)
     test_labels, test_error_rate = cnn.test(test_images, test_labels)
-    # MPI.Finalize()
-    with open(args.train_out, "w") as f:
-            for label in train_labels:
+
+    if rank == 0:
+        with open(args.train_out, "w") as f:
+                for label in train_labels:
+                    f.write(str(label) + "\n")
+        with open(args.test_out, "w") as f:
+            for label in test_labels:
                 f.write(str(label) + "\n")
-    with open(args.test_out, "w") as f:
-        for label in test_labels:
-            f.write(str(label) + "\n")
-    with open(args.metrics_out, "w") as f:
-        for i in range(len(train_losses)):
-            cur_epoch = i + 1
-            cur_tr_loss = train_losses[i]
-            f.write("epoch={} crossentropy(train): {}\n".format(
-                cur_epoch, cur_tr_loss))
-        f.write("error(train): {}\n".format(train_error_rate))
-        f.write("error(test): {}\n".format(test_error_rate))
+        with open(args.metrics_out, "w") as f:
+            for i in range(len(train_losses)):
+                cur_epoch = i + 1
+                cur_tr_loss = train_losses[i]
+                f.write("epoch={} crossentropy(train): {}\n".format(
+                    cur_epoch, cur_tr_loss))
+            f.write("error(train): {}\n".format(train_error_rate))
+            f.write("error(test): {}\n".format(test_error_rate))
 
 
 if __name__ == '__main__':
@@ -77,9 +77,9 @@ if __name__ == '__main__':
                       help='path to store prediction on validation data')
   parser.add_argument('--metrics_out', type=str, default='metrics_out.txt',
                       help='path to store training and testing metrics')
-  parser.add_argument('--num_epoch', type=int, default=10,
+  parser.add_argument('--num_epoch', type=int, default=1,
                       help='number of training epochs')
-  parser.add_argument('--num_image', type=int, default=50, help='number of images used')
+  parser.add_argument('--num_image', type=int, default=64, help='number of images used')
   parser.add_argument('--learning_rate', type=float, default=0.05,
                       help='learning rate')
   parser.add_argument('--batch_num', type=int, default=128,

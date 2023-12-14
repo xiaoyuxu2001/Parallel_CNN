@@ -5,6 +5,7 @@ from dense_seq import  Relu, Flatten, Dense, random_init, SoftMaxCrossEntropy, s
 import numpy as np
 from typing import Callable, List, Tuple
 import logging
+import time
 
 # todo: improve the model, right now it is very shabby
 class CNN:
@@ -72,6 +73,7 @@ class CNN:
         train_loss_list = []
         test_loss_list = []
         for e in range (n_epochs):
+            time_start = time.time()
             print('--- Epoch %d ---' % (e))
             index = np.random.choice(len(X_tr), batch_num, replace=False) 
             X_s, y_s = X_tr[index], y_tr[index]
@@ -82,6 +84,8 @@ class CNN:
             # assert(seq.mean(loss) == np.average(loss))
             if self.backprop(y_s, y_hat):
                 break
+            time_end = time.time()
+            print("Time for epoch: ", format(time_end - time_start, '.2f'), "s")
         return train_loss_list, test_loss_list
     
 
@@ -133,7 +137,7 @@ class Linear:
         :return: output z of linear layer with shape (batch_num, output_size)
         """
         # Insert bias term
-        x = np.insert(x, 0, 1, axis=1)
+        x = seq.insert_ones_column(x)
         self.input = x
         # assert(np.any(seq.dot(x, self.w.T)) == np.any(np.dot(x, self.w.T)))
         return seq.dot(x, self.w.T)
