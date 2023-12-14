@@ -6,6 +6,7 @@ from typing import Callable, List, Tuple
 import logging
 from data_parallel import data_parallel_forward, divide_data, ring_all_reduce
 from model_parallel import Parallel_Linear
+import time
 
 from mpi4py import MPI
 import numpy as np
@@ -95,28 +96,32 @@ class ParallelCNN:
             gradient_sent = np.full((self.size, *gradient.shape), gradient, dtype=np.float64)
         # scatter the gradient to each process
         gradient = self.comm.scatter(gradient_sent, root=0)
-        print("gradient shape: ", gradient.shape)
         for layer in reversed(self.dense_layers):
             gradient = layer.backprop(gradient)
-            print("gradient shape2: ", gradient.shape)
 
+        print("gradient shape: ", gradient.shape)
         self.comm.Barrier()
         print("we are here")
 
         # 2. perform the backward pass on the conv layers
         local_grad_bias = None
         local_grad_filter = None
-        local_grad = gradient
-        for layer in reversed(self.conv_layers):
+        local_grad = gradient[self.rank * self.batch_num // self.size : (self.rank + 1) * self.batch_num // self.size]
+        for i, layer in enumerate(reversed(self.conv_layers)):
             if isinstance(layer, Conv2d):
                 print("Conv2d")
                 local_grad_filter,  local_grad_bias= layer.backprop(local_grad, False)
+                print("local_grad_filter shape: ", local_grad_filter.shape)
+                print("local_grad_bias shape: ", local_grad_bias.shape)
             else:
                 local_grad = layer.backprop(local_grad)
         # perform the allreduce to get the global gradient
         # append the bias to the filter
         global_grad_bias = ring_all_reduce(local_grad_bias, self.comm, self.rank, self.size)
         global_grad_filter = ring_all_reduce(local_grad_filter, self.comm, self.rank, self.size)
+
+        # print("global_grad_bias shape: ", global_grad_bias.shape)
+        # print("global_grad_filter shape: ", global_grad_filter.shape)
 
         # apply to the corresponding conv layer
         self.conv_layers[0].filters -= self.learning_rate * (global_grad_filter / self.batch_num)
@@ -144,6 +149,7 @@ class ParallelCNN:
         test_loss_list = []
         for e in range (n_epochs):
             print('--- Epoch %d ---' % (e))
+            time_start = time.time()
             X_s, y_s = None, None
             if self.rank == 0:
                 index = np.random.choice(len(X_tr), batch_num, replace=True)
@@ -154,6 +160,8 @@ class ParallelCNN:
                 print("loss: ", loss)
             if self.backprop(y_s, y_hat):
                 break
+            time_end = time.time()
+            print("Time for epoch: ", format(time_end - time_start, '.2f'), "s")
 
 
         return train_loss_list, test_loss_list

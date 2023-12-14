@@ -83,18 +83,16 @@ def data_parallel_forward(data, comm, model):
 
 # assume that before calling the function, each process has already had a piece of data
 # assume all_data has size (num_batch, 10, 32)
-def ring_all_reduce(all_data, comm):
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+def ring_all_reduce(all_data, comm, rank, size):
 
     # data buffer for receiving data
-    recv = np.zeros(all_data.shape[1:], dtype=np.float16)
     
     # separate data into size batches
     n = np.prod(all_data.shape) # total number of parameters
     assert(n % size == 0) # make sure the number of parameters is divisible by the number of processes, can be changed later
     minibatch_size = n // size
     collection = np.reshape(all_data.copy(), (size, minibatch_size))
+    recv = np.zeros(minibatch_size, dtype=all_data.dtype)
 
     # 1. aggregation stage
     for i in range(size - 1):
@@ -112,7 +110,7 @@ def ring_all_reduce(all_data, comm):
         
 
     # 2. boardcast stage: each worker send one slice of aggregated parameters to the next worker; repeat N times
-    recv = np.collection[(rank + 1) % size].copy()
+    recv = collection[(rank + 1) % size].copy()
     for i in range(size - 1):
         send_to = (rank + 1) % size
         recv_from = (rank - 1) % size
@@ -127,4 +125,6 @@ def ring_all_reduce(all_data, comm):
         # warning: not sure whether we need to copy the data
         collection[pos] = recv.copy()
     
+    # reshape the data to be the same as the original data
+    collection = np.reshape(collection, all_data.shape)
     return collection
