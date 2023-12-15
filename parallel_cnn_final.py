@@ -77,10 +77,10 @@ if __name__ == '__main__':
                       help='path to store prediction on validation data')
   parser.add_argument('--metrics_out', type=str, default='metrics_out.txt',
                       help='path to store training and testing metrics')
-  parser.add_argument('--num_epoch', type=int, default=1,
+  parser.add_argument('--num_epoch', type=int, default=5,
                       help='number of training epochs')
-  parser.add_argument('--num_image', type=int, default=32, help='number of images used')
-  parser.add_argument('--learning_rate', type=float, default=0.05,
+  parser.add_argument('--num_image', type=int, default=512, help='number of images used')
+  parser.add_argument('--learning_rate', type=float, default=0.0005,
                       help='learning rate')
   parser.add_argument('--batch_num', type=int, default=32,
                       help='batch_num')

@@ -26,7 +26,7 @@ class ParallelCNN:
                             MaxPool2(),
                             Flatten()]
         self.dense_layers = [Parallel_Linear(20000, 128 // self.size, random_init, learning_rate, layer_index = 0),
-                          Relu(), 
+                        #   Relu(), 
                           Parallel_Linear(128 // self.size, 2, random_init, learning_rate, layer_index = 1)]
         self.softmax = SoftMaxCrossEntropy()
         logging.info("model initialized")
@@ -56,7 +56,7 @@ class ParallelCNN:
         self.comm.Allgatherv([out_split, MPI.DOUBLE], [recvbuf, (recv_size, displacements), MPI.DOUBLE])
 
         # 3. perform the forward pass on the dense layers!
-        out = recvbuf.reshape((self.batch_num, 20000))
+        out = recvbuf.reshape((total_recv_size//20000, 20000))
 
         for layer in self.dense_layers:
             out = layer.forward(out)
@@ -89,7 +89,7 @@ class ParallelCNN:
         gradient = self.comm.scatter(gradient_sent, root=0)
         for layer in reversed(self.dense_layers):
             gradient = layer.backprop(gradient)   
-            self.comm.Barrier()         
+            self.comm.Barrier()   
 
         self.comm.Barrier()
 
@@ -102,7 +102,7 @@ class ParallelCNN:
             if isinstance(layer, Conv2d):
                 local_grad_filter,  local_grad_bias= layer.backprop(local_grad, False)
             else:
-                local_grad = layer.backprop(local_grad)
+                local_grad = layer.backprop(local_grad)        
         # perform the allreduce to get the global gradient
         # append the bias to the filter
         global_grad_bias = ring_all_reduce(local_grad_bias, self.comm, self.rank, self.size)
@@ -141,13 +141,16 @@ class ParallelCNN:
                 X_s, y_s = X_tr[index], y_tr[index]
             time_forward_start = time.time()
             y_hat, loss = self.forward(X_s, y_s)
-            print("loss:", np.mean(loss))
+            # if e >= 10:
+                # print(y_hat)
+            if self.rank == 0:
+                print("loss:", np.mean(loss))
             time_forward_end = time.time()
-            print("Time for forward: ", format(time_forward_end - time_forward_start, '.2f'), "s")
+            # print("Time for forward: ", format(time_forward_end - time_forward_start, '.2f'), "s")
             if self.backprop(y_s, y_hat):
                 break
             time_end = time.time()
-            print("time for backprop: ", format(time_end - time_forward_end, '.2f'), "s")
+            # print("time for backprop: ", format(time_end - time_forward_end, '.2f'), "s")
 
 
         return train_loss_list, test_loss_list
@@ -162,9 +165,8 @@ class ParallelCNN:
             labels: predicted labels
             error_rate: prediction error rate
         """
+        y_hat, loss = self.forward(X, y)
         if self.rank == 0:
-            error = 0
-            y_hat, loss = self.forward(X, y)
             y_predict = np.argmax(y_hat, axis = 1)
             error = np.count_nonzero(y_predict - y)
             return y_predict, error / len(X)
