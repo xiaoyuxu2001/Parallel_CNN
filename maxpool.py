@@ -1,4 +1,8 @@
 import numpy as np
+import pycuda.autoinit
+import pycuda.driver as cuda
+import pycuda.gpuarray as gpuarray
+from pycuda.compiler import SourceModule
 
 class MaxPool2:
     """
@@ -14,9 +18,7 @@ class MaxPool2:
         - image is a 2d numpy array
         '''
         h, w, _ = image.shape
-        # new_h = h // self.pool_size
         new_h = h-self.stride
-        # new_w = w // self.pool_size
         new_w = w-self.stride
 
         for i in range(new_h):
@@ -28,7 +30,6 @@ class MaxPool2:
         '''
         Performs a forward pass of the maxpool layer using the given input.
         '''
-        # print("forwarding: maxpool")
         self.last_input = input
         batch, width, height, n_channels = input.shape
         pooled_height = height - 1  # since 2x2 pooling, reduce dimension by 1
@@ -50,17 +51,6 @@ class MaxPool2:
         Performs a backward pass of the maxpool layer.
         '''
         d_L_d_input = np.zeros(self.last_input.shape)
-
-        # for batch_num in range(len(self.last_input)):
-        #     for im_region, i, j in self.iterate_regions(self.last_input[batch_num]):
-        #         h, w, f = im.shape
-        #         amax = np.max(i)
-        #         for r in range(h):
-        #             for c in range(w):
-        #                 for channel in 
-        #                 # If this pixel was the max value, copy the gradient to it.
-        #                 if i[r, c] == amax:
-        #                     d_L_d_input[batch_num, r * self.stride + i, c * self.stride + j, channel] = d_L_d_out[batch_num, i, j, channel]
         
         for b in range(len(self.last_input)):
             for im_region, i, j in self.iterate_regions(self.last_input[b]):

@@ -79,7 +79,7 @@ if __name__ == '__main__':
                       help='path to store training and testing metrics')
   parser.add_argument('--num_epoch', type=int, default=1,
                       help='number of training epochs')
-  parser.add_argument('--num_image', type=int, default=64, help='number of images used')
+  parser.add_argument('--num_image', type=int, default=128, help='number of images used')
   parser.add_argument('--learning_rate', type=float, default=0.05,
                       help='learning rate')
   parser.add_argument('--batch_num', type=int, default=128,

@@ -17,7 +17,7 @@ class CNN:
             MaxPool2(),
             Flatten(),
             Linear(20000, 128, random_init, learning_rate),
-            Relu(),
+            # Relu(),
             Linear(128, 2, random_init, learning_rate),
             SoftMaxCrossEntropy()
         ]
@@ -33,10 +33,11 @@ class CNN:
         # to work with. This is standard practice.
         # Forward pass through each layer
         out = image / 255 - 0.5  # Normalize input
-        for layer in self.layers[:-1]:  # Exclude last layer (SoftMaxCrossEntropy)
+        strat_time = time.time()
+        for i, layer in enumerate(self.layers[:-1]):  # Exclude last layer (SoftMaxCrossEntropy)
             out = layer.forward(out)
-            print("layer: ", out.shape)
         y_hat, loss = self.layers[-1].forward_batch(out, label)  # Last layer, softmax
+        end_time = time.time()
         return y_hat, loss
 
     def backprop(self, label, label_hat):
@@ -78,14 +79,12 @@ class CNN:
             index = np.random.choice(len(X_tr), batch_num, replace=False) 
             X_s, y_s = X_tr[index], y_tr[index]
             y_hat, loss = self.forward(X_s, y_s)
-            print("y_hat: ", seq.argmax(y_hat, axis = 1), y_hat)
-            print("loss: ", seq.mean(loss))
-            # assert(np.any(seq.argmax(y_hat, axis = 1)) == np.any(np.argmax(y_hat, axis = 1)))
-            # assert(seq.mean(loss) == np.average(loss))
+            time_forward_end = time.time()
+            print("Time for forward: ", format(time_forward_end - time_start, '.2f'), "s")
             if self.backprop(y_s, y_hat):
                 break
             time_end = time.time()
-            print("Time for epoch: ", format(time_end - time_start, '.2f'), "s")
+            print("time for backprop: ", format(time_end - time_forward_end, '.2f'), "s")
         return train_loss_list, test_loss_list
     
 

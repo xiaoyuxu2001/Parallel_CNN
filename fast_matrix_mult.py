@@ -12,7 +12,6 @@ def matmul_parallel_divideA_horizontal(A, B, rows_A, cols_A, cols_B):
     local_C = np.empty((rows_per_proc, cols_B), dtype="float")
     # Scatter rows of A to different processes
     comm.Scatterv(A, local_A, root=0)
-    print("here")
     # Broadcast B to all processes
     comm.Bcast(B, root=0)
     # Local computation: Matrix multiplication

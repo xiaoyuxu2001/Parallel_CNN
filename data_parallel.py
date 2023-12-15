@@ -13,18 +13,6 @@ def divide_data(data, num_workers) -> np.ndarray:
     Returns:
         array: a list of data subsets corresponding to the workload of each worker
     """
-    # rows_per_worker = data.shape[0] // num_workers
-    # redundant_rows = data.shape[0] % num_workers
-    # splits =[]
-    # for i in range(num_workers):
-    #     if i < redundant_rows:
-    #         splits.append(data[i * (rows_per_worker + 1):((i + 1) * (rows_per_worker + 1) + 2)])
-    #     elif not i == num_workers - 1:
-    #         splits.append(data[i * rows_per_worker + redundant_rows:((i + 1) - 1 * rows_per_worker + redundant_rows) + 2])
-    #     else:
-    #         splits.append (data[i * rows_per_worker + redundant_rows - 1:])
-
-    # splits = np.array(splits)
 
     # return splits
     rows_per_worker = data.shape[0] // num_workers

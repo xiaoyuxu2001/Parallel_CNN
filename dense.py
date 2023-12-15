@@ -1,5 +1,9 @@
-import numpy as np
 from typing import Tuple
+import pycuda.autoinit
+import pycuda.driver as cuda
+import pycuda.gpuarray as gpuarray
+import numpy as np
+from pycuda.compiler import SourceModule
 def shuffle(X: np.ndarray, y: np.ndarray, 
             epoch: int) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -113,6 +117,38 @@ class Relu:
         """
         self.last_input = input
         return np.maximum(0, input)
+    
+    def forward_gpu(self, input):
+        """
+        Performs a forward pass of the ReLU activation on the input using CUDA.
+        """
+        # Convert input to float32 and transfer to GPU
+        input_gpu = gpuarray.to_gpu(input.astype(np.float32))
+
+        # Define CUDA kernel
+        kernel_code = """
+        __global__ void ReluForward(float *input, int size) {
+            int idx = blockIdx.x * blockDim.x + threadIdx.x;
+            if (idx < size) {
+                input[idx] = max(0.0f, input[idx]);
+            }
+        }
+        """
+
+        mod = SourceModule(kernel_code)
+        relu_forward = mod.get_function("ReluForward")
+
+        # Calculate grid and block sizes
+        size = input.size
+        block_size = 256
+        grid_size = int(np.ceil(size / block_size))
+
+        # Launch kernel
+        relu_forward(input_gpu, np.int32(size), block=(block_size, 1, 1), grid=(grid_size, 1, 1))
+
+        # Copy result back to CPU
+        result = input_gpu.get()
+        return result
 
     def backprop(self, d_L_d_out):
         """
@@ -121,6 +157,41 @@ class Relu:
         d_L_d_input = d_L_d_out.copy()
         d_L_d_input = np.where(d_L_d_input > 0, d_L_d_input, 0)
         return d_L_d_input
+    
+    def backprop_gpu(self, d_L_d_out):
+        """
+        Performs a backward pass of the ReLU activation using CUDA.
+        """
+        # Convert d_L_d_out to float32 and transfer to GPU
+        d_L_d_out_gpu = gpuarray.to_gpu(d_L_d_out.astype(np.float32))
+
+        # Define CUDA kernel
+        kernel_code = """
+        __global__ void ReluBackward(float *d_L_d_out, float *d_L_d_input, int size) {
+            int idx = blockIdx.x * blockDim.x + threadIdx.x;
+            if (idx < size) {
+                d_L_d_input[idx] = d_L_d_out[idx] > 0.0f ? d_L_d_out[idx] : 0.0f;
+            }
+        }
+        """
+
+        mod = SourceModule(kernel_code)
+        relu_backward = mod.get_function("ReluBackward")
+
+        # Allocate GPU memory for output
+        d_L_d_input_gpu = gpuarray.zeros_like(d_L_d_out_gpu)
+
+        # Calculate grid and block sizes
+        size = d_L_d_out.size
+        block_size = 256
+        grid_size = int(np.ceil(size / block_size))
+
+        # Launch kernel
+        relu_backward(d_L_d_out_gpu, d_L_d_input_gpu, np.int32(size), block=(block_size, 1, 1), grid=(grid_size, 1, 1))
+
+        # Copy result back to CPU
+        result = d_L_d_input_gpu.get()
+        return result
 
     
 class SoftMaxCrossEntropy:

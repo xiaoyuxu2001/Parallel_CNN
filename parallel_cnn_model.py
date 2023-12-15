@@ -35,15 +35,16 @@ class ParallelCNN:
         # perform the forward pass on the conv layers
         out_split = None
         partition_X = None
-        print("image shape: ", image.shape)
         if self.rank == 0:
             # Split the data into subsets for each worker
             partition_X = divide_data(image, self.size)
-        print("partition_X shape: ", len(partition_X), partition_X[0].shape)
         out_split = self.comm.scatter(partition_X, root=0)
         # Apply the forward pass on each worker
+        start_time = time.time()
         for layer in self.conv_layers:
             out_split = layer.forward(out_split)
+        end_time = time.time()
+        print("Time for forward: ", format(end_time - start_time, '.2f'), "s")
 
         # allgatherv to collect the data from each process
         # calculate the size of the data to be received
