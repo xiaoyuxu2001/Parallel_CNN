@@ -92,6 +92,7 @@ def ring_all_reduce(all_data, comm, rank, size):
 
         # receive data from the previous process blocking
         comm.Recv(recv, source=recv_from, tag=i)
+        comm.Barrier()
 
         # add the received data to the corresponding position to the local data
         collection[(rank - i - 1) % size] = collection[(rank - i - 1) % size] + recv
@@ -108,9 +109,9 @@ def ring_all_reduce(all_data, comm, rank, size):
 
         # receive data from the previous process blocking
         comm.Recv(recv, source=recv_from, tag=i)
-        pos = (rank - i) % size
+        comm.Barrier()
 
-        # warning: not sure whether we need to copy the data
+        pos = (rank - i) % size
         collection[pos] = recv.copy()
     
     # reshape the data to be the same as the original data
