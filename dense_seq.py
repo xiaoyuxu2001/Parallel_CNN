@@ -42,7 +42,6 @@ def random_init(shape : Tuple[int, int]) -> np.ndarray:
     :return: initialized weights
     """
     M, D = shape
-    np.random.seed(M * D)  # Don't change this line!
 
     W = np.random.uniform(-0.1, 0.1, shape)
     return W
@@ -58,7 +57,7 @@ def shuffle(X: np.ndarray, y: np.ndarray,
     :param epoch: The epoch number (0-indexed).
     :return: Permuted X and y training data for the epoch.
     """
-    np.random.seed(epoch)
+    # np.random.seed(epoch)
     N = len(y)
     ordering = np.random.permutation(N)
     return X[ordering], y[ordering]
@@ -77,7 +76,6 @@ class Flatten:
 
     def backprop(self, d_L_d_out):
         # input_shape is the shape before we flattened it
-        print("d_L_d_out: ", d_L_d_out.shape)
         input_shape = self.input_shape
         ret = np.empty(input_shape)
         for i in range(len(d_L_d_out)):
@@ -149,7 +147,6 @@ class SoftMaxCrossEntropy:
 
         sum_exp = np.sum(seq.exp(z), axis=1, keepdims=True)
         softmax_output = np.divide(seq.exp(z), sum_exp)
-        # print("softmax_output here", softmax_output)
         return softmax_output
 
     def _cross_entropy(self, y: int, y_hat: np.ndarray) -> float:
@@ -203,7 +200,7 @@ class SoftMaxCrossEntropy:
         :param z: input logits of shape (num_batch, num_classes)
         :param y: integer class label
         :return:
-            y: predictions from softmax as an np.ndarrayt
+            y: predictions (probability) from softmax as an np.ndarray
             loss: cross entropy loss, arrray of shape (num_batch,)
         """    
         y_hat_batch = self._softmax_batch(z)

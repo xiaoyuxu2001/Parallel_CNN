@@ -9,13 +9,9 @@ def dot(X, Y):
     result = np.zeros((X.shape[0], Y.shape[1]))
     for i in range(X.shape[0]):
         for j in range(Y.shape[1]):
-            for k in range(Y.shape[0]):
-                result[i][j] += X[i][k] * Y[k][j]
+            for k in range(X.shape[1]):  # Iterating over columns of X or rows of Y
+                result[i, j] += X[i, k] * Y[k, j]
     return result
-
-# random_matrix1 = np.random.rand(3, 3)
-# random_matrix2 = np.random.rand(3, 3)
-# assert(np.all(seq_dot(random_matrix1, random_matrix2)) == np.all(np.dot(random_matrix1, random_matrix2)))
 
 
 def sum(arr, axis=None):

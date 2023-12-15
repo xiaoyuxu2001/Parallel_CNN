@@ -1,7 +1,8 @@
 from mpi4py import MPI
 import numpy as np
 from typing import Callable, Tuple
-from fast_matrix_mult import matmul_parallel_divideA_horizontal, matmul_parallel_divideB_vertical
+import seq_operations as seq
+# import parallel_operations as par
 
 INIT_FN_TYPE = Callable[[Tuple[int, int]], np.ndarray]
 
@@ -35,42 +36,31 @@ class Parallel_Linear:
         '''
         assume that the data is already splited
         '''
-        # Insert bias term
         if self.biased:
             bias = np.ones((x.shape[0], 1))
             x = np.hstack((bias, x))
         else:
             x = x
-        print(x.shape)
-        self.input = x
-        print(self.w.T.shape)
 
-        return np.dot(x, self.w.T)
-  
-        # x_row, x_col = x.shape
-        # w_row, w_col = self.w.T.shape
-        # gathered_y = None
-        # assert(x_col == w_row)
-        # if self.layer_index == 0:
-        #     gathered_y = matmul_parallel_divideA_horizontal(x, self.w.T, x_row, x_col, w_col)
-        # elif self.layer_index == 1:
-        #     gathered_y = matmul_parallel_divideB_vertical(x, self.w.T, x_row, x_col, w_col)
-        # return gathered_y
+        self.input = x
+
+        
+        res = seq.dot(x, self.w.T)
+            
+        return res
+    
 
     def backprop(self, dz: np.ndarray) -> np.ndarray:
-        self.dw = np.dot(dz.T, self.input) / dz.shape[0]  # Averaging over the batch
-        self.w = self.w - self.lr * self.dw
+        self.dw = seq.dot(dz.T, self.input) / dz.shape[0]  # Averaging over the batch
         # Compute gradient w.r.t. inputs (dx)
-        
+        dx = None
         if self.biased:
-            dx = np.dot(dz, self.w[:, 1:])
+            dx = seq.dot(dz, self.w[:, 1:])
         else:
-            dx = np.dot(dz, self.w)
+            dx = seq.dot(dz, self.w)
+        
+        # update weight
+        self.w = self.w - self.lr * self.dw
         return dx
-    
-    # def step(self) -> None:
-    #     # Update local weights with local gradients
-    #     self.local_w -= self.lr * self.local_dw
-
 
     

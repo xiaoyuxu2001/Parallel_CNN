@@ -17,7 +17,7 @@ class CNN:
             MaxPool2(),
             Flatten(),
             Linear(20000, 128, random_init, learning_rate),
-            # Relu(),
+            Relu(),
             Linear(128, 2, random_init, learning_rate),
             SoftMaxCrossEntropy()
         ]
@@ -138,7 +138,6 @@ class Linear:
         # Insert bias term
         x = seq.insert_ones_column(x)
         self.input = x
-        # assert(np.any(seq.dot(x, self.w.T)) == np.any(np.dot(x, self.w.T)))
         return seq.dot(x, self.w.T)
        
     def backprop(self, dz: np.ndarray) -> np.ndarray:
